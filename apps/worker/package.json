@@ -1,0 +1,26 @@
+{
+  "name": "@design-platform/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@design-platform/types": "workspace:*",
+    "@design-platform/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@design-platform/config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.39.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

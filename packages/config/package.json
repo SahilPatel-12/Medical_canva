@@ -1,0 +1,21 @@
+{
+  "name": "@design-platform/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/nextjs.json": "./typescript/nextjs.json",
+    "./typescript/node.json": "./typescript/node.json",
+    "./eslint/base.mjs": "./eslint/base.mjs",
+    "./prettier": "./prettier/index.mjs"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}

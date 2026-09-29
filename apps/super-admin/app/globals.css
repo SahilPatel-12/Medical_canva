@@ -1,0 +1,20 @@
+:root {
+  --background: #08080a;
+  --foreground: #f43f5e;
+  --text-muted: #a1a1aa;
+  --border: #27272a;
+  --card-bg: #18181b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--background);
+  color: #f4f4f5;
+  min-height: 100vh;
+}
