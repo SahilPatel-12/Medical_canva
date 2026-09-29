@@ -2,10 +2,18 @@
   "name": "@design-platform/config",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "typescript",
+    "eslint",
+    "prettier"
+  ],
   "exports": {
     "./typescript/base.json": "./typescript/base.json",
     "./typescript/nextjs.json": "./typescript/nextjs.json",
     "./typescript/node.json": "./typescript/node.json",
+    "./base.json": "./typescript/base.json",
+    "./nextjs.json": "./typescript/nextjs.json",
+    "./node.json": "./typescript/node.json",
     "./eslint/base.mjs": "./eslint/base.mjs",
     "./prettier": "./prettier/index.mjs"
   },
