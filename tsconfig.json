@@ -22,9 +22,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true
+    "noEmit": true
   },
-  "exclude": ["node_modules", "dist", "build", ".next", "out"]
+  "exclude": ["node_modules", "dist", "build", ".next", "out", "apps", "packages"]
 }

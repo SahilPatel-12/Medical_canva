@@ -183,7 +183,7 @@ pnpm format
      }
    }
    ```
-3. Create `tsconfig.json` extending `@design-platform/config/typescript/base.json`.
+3. Create `tsconfig.json` extending `../config/typescript/base.json`.
 4. Run `pnpm install` at the monorepo root to link the new workspace package.
 
 ### How to Add a New Application
