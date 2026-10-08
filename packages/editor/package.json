@@ -18,11 +18,20 @@
   },
   "dependencies": {
     "@design-platform/types": "workspace:*",
-    "@design-platform/utils": "workspace:*"
+    "@design-platform/utils": "workspace:*",
+    "konva": "^10.7.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@design-platform/config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "typescript": "^5.9.3"
   }
 }

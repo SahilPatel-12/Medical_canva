@@ -8,7 +8,6 @@ const nextConfig: NextConfig = {
     "@design-platform/api-client",
     "@design-platform/auth",
     "@design-platform/database",
-    "@design-platform/storage",
     "@design-platform/config",
     "@design-platform/utils",
   ],

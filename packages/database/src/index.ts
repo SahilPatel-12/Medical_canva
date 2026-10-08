@@ -1,3 +1,8 @@
+export * from "./types";
+export * from "./client";
+export * from "./repository/SupabaseDesignRepository";
+export * from "./repository/SupabaseAssetRepository";
+
 /**
  * Database connection configuration placeholder
  */
@@ -19,4 +24,4 @@ export interface DatabaseHealthStatus {
 /**
  * Version info for database package
  */
-export const DATABASE_PACKAGE_VERSION = "0.1.0";
+export const DATABASE_PACKAGE_VERSION = "0.2.0";

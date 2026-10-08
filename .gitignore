@@ -11,13 +11,14 @@ out
 # Turborepo
 .turbo
 
-# Environment files
+# Environment and secrets files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
+.env.*
+.env*.local
+*.env
+*.env.local
+!.env.example
+
 
 # Logs
 logs

@@ -17,10 +17,13 @@
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1147.0",
+    "@aws-sdk/s3-request-presigner": "^3.1147.0",
     "@design-platform/types": "workspace:*"
   },
   "devDependencies": {
     "@design-platform/config": "workspace:*",
+    "@types/node": "^22.0.0",
     "eslint": "^9.39.5",
     "typescript": "^5.9.3"
   }

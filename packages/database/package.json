@@ -17,10 +17,12 @@
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "@design-platform/types": "workspace:*"
+    "@design-platform/types": "workspace:*",
+    "@supabase/supabase-js": "^2.117.2"
   },
   "devDependencies": {
     "@design-platform/config": "workspace:*",
+    "@types/node": "^22.0.0",
     "eslint": "^9.39.5",
     "typescript": "^5.9.3"
   }

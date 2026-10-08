@@ -33,4 +33,9 @@ export interface IStorageDriver {
   getSignedUploadUrl(key: string, contentType: string, expiresInSeconds?: number): Promise<string>;
   getPublicUrl(key: string): string;
   deleteFile(key: string): Promise<void>;
+  uploadFile?(key: string, body: Buffer | Uint8Array | string, contentType: string): Promise<StorageFileMetadata>;
+  fileExists?(key: string): Promise<boolean>;
+  getFileText?(key: string): Promise<string>;
 }
+
+export * from "./s3Driver";

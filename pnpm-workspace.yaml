@@ -6,6 +6,9 @@ allowBuilds:
   esbuild: true
   unrs-resolver: true
 
+minimumReleaseAgeExclude:
+  - lucide-react@1.51.0
+
 onlyBuiltDependencies:
   - "@parcel/watcher"
   - "esbuild"
