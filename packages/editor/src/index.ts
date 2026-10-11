@@ -10,6 +10,7 @@ export * from "./canvas/svgUtils";
 
 // Elements & Sample Library
 export * from "./elements/sampleAssets";
+export * from "./elements/taxonomy";
 
 // State, Store & Hook
 export * from "./state/EditorStore";

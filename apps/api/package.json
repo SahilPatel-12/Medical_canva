@@ -9,10 +9,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts",
     "lint": "eslint src",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
+    "@design-platform/auth": "workspace:*",
+    "@design-platform/database": "workspace:*",
     "@design-platform/types": "workspace:*",
     "@design-platform/utils": "workspace:*",
     "@fastify/cors": "^10.0.2",

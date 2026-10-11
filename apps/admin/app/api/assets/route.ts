@@ -42,6 +42,10 @@ export async function POST(request: NextRequest) {
 
     const rawName = formData.get("name") as string | null;
     const category = (formData.get("category") as string) || "science";
+    const categorySlug = (formData.get("categorySlug") as string) || undefined;
+    const subcategorySlug = (formData.get("subcategorySlug") as string) || undefined;
+    const subcategoryId = (formData.get("subcategoryId") as string) || undefined;
+    const subcategoryName = (formData.get("subcategoryName") as string) || undefined;
     const rawTags = (formData.get("tags") as string) || "";
     const customWidth = parseInt((formData.get("width") as string) || "120", 10);
     const customHeight = parseInt((formData.get("height") as string) || "120", 10);
@@ -70,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Build unique R2 key
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const r2Key = `assets/${category}/${Date.now()}-${sanitizedFileName}`;
+    const r2Key = `assets/${categorySlug || category}/${Date.now()}-${sanitizedFileName}`;
 
     // 1. Upload to Cloudflare R2
     const storageDriver = getR2StorageDriver();
@@ -84,12 +88,21 @@ export async function POST(request: NextRequest) {
           .filter(Boolean)
       : [category.toLowerCase()];
 
+    if (categorySlug && !tags.includes(categorySlug)) tags.push(categorySlug);
+    if (subcategorySlug && !tags.includes(subcategorySlug)) tags.push(subcategorySlug);
+    if (categorySlug) tags.push(`cat:${categorySlug}`);
+    if (subcategorySlug) tags.push(`subcat:${subcategorySlug}`);
+
     // 3. Save metadata into Supabase
     const repo = new SupabaseAssetRepository();
     const createdAsset = await repo.create({
       id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: displayName,
       category,
+      category_slug: categorySlug,
+      subcategory_id: subcategoryId,
+      subcategory_slug: subcategorySlug,
+      subcategory_name: subcategoryName,
       type: assetType,
       r2_key: r2Key,
       public_url: uploadResult.publicUrl || storageDriver.getPublicUrl(r2Key),

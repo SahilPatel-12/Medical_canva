@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { DesignDocument, CreateDesignInput } from "@design-platform/types";
+import { useAuth } from "@design-platform/auth";
 import { getDesignRepository } from "../../lib/repository";
 import { FilesTopNav } from "./FilesTopNav";
 import { FilesSidebar, FileFilter } from "./FilesSidebar";
@@ -13,7 +14,11 @@ import { Plus, Search, Layers, RefreshCw } from "lucide-react";
 
 export const FilesDashboard: React.FC = () => {
   const router = useRouter();
-  const repository = useMemo(() => getDesignRepository(), []);
+  const { user, currentWorkspace, isLoading: isAuthLoading } = useAuth();
+  const repository = useMemo(
+    () => getDesignRepository({ workspaceId: currentWorkspace?.id, userId: user?.id }),
+    [currentWorkspace?.id, user?.id]
+  );
 
   const [designs, setDesigns] = useState<DesignDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,20 +32,36 @@ export const FilesDashboard: React.FC = () => {
   const [renameValue, setRenameValue] = useState("");
 
   const loadDesigns = async () => {
+    if (!currentWorkspace?.id) {
+      setDesigns([]);
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
-      const list = await repository.list();
+      const list = await repository.list(currentWorkspace.id);
       setDesigns(list);
     } catch (err) {
       console.error("Failed to load designs:", err);
+      setDesigns([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    if (isAuthLoading) return;
+    if (!user) {
+      router.replace("/login?redirectTo=/files");
+      return;
+    }
+    if (!currentWorkspace) {
+      setDesigns([]);
+      setIsLoading(false);
+      return;
+    }
     loadDesigns();
-  }, []);
+  }, [currentWorkspace?.id, isAuthLoading, user, router]);
 
   // Filtered designs
   const filteredDesigns = useMemo(() => {
@@ -66,33 +87,58 @@ export const FilesDashboard: React.FC = () => {
     return result;
   }, [designs, activeFilter, searchQuery]);
 
+  const isViewer = currentWorkspace?.role === "viewer";
+
   // Actions
   const handleCreate = async (input: CreateDesignInput) => {
-    const created = await repository.create(input);
+    if (!currentWorkspace?.id || isViewer) return;
+    const created = await repository.create({
+      ...input,
+      workspaceId: currentWorkspace.id,
+    });
     await loadDesigns();
     router.push(`/editor/${created.id}`);
   };
 
   const handleDuplicate = async (id: string) => {
-    await repository.duplicate(id);
+    if (!currentWorkspace?.id || isViewer) return;
+    await repository.duplicate(id, currentWorkspace.id);
     await loadDesigns();
   };
 
   const handleDelete = async () => {
-    if (!deleteTargetId) return;
-    await repository.delete(deleteTargetId);
+    if (!deleteTargetId || !currentWorkspace?.id) return;
+    await repository.delete(deleteTargetId, currentWorkspace.id);
     setDeleteTargetId(null);
     await loadDesigns();
   };
 
   const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!renameTarget || !renameValue.trim()) return;
+    if (!renameTarget || !renameValue.trim() || !currentWorkspace?.id) return;
 
-    await repository.update(renameTarget.id, { name: renameValue.trim() });
+    await repository.update(renameTarget.id, { name: renameValue.trim() }, currentWorkspace.id);
     setRenameTarget(null);
     await loadDesigns();
   };
+
+  if (isAuthLoading || !user) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#09090b",
+          color: "#71717a",
+          fontSize: "0.875rem",
+        }}
+      >
+        Loading session...
+      </div>
+    );
+  }
 
   return (
     <div
@@ -250,6 +296,7 @@ export const FilesDashboard: React.FC = () => {
                   }}
                   onDuplicate={handleDuplicate}
                   onDelete={(id) => setDeleteTargetId(id)}
+                  isViewer={isViewer}
                 />
               ))}
             </div>

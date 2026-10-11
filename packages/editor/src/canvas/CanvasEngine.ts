@@ -15,6 +15,7 @@ export interface CanvasEngineCallbacks {
   onElementChange: (elementId: string, updates: Partial<DesignElement>) => void;
   onDropAsset: (asset: Asset, position: { x: number; y: number }) => void;
   onZoomChange?: (zoom: number) => void;
+  isReadOnly?: boolean;
 }
 
 export class CanvasEngine {
@@ -27,7 +28,9 @@ export class CanvasEngine {
   private nodeMap: Map<string, Konva.Shape | Konva.Group> = new Map();
   private callbacks: CanvasEngineCallbacks;
   private currentDoc: DesignDocument | null = null;
+  private activePageIndex: number = 0;
   private zoomLevel: number = 1;
+  private isReadOnly: boolean = false;
 
   // Pan state
   private isSpacePressed: boolean = false;
@@ -39,10 +42,12 @@ export class CanvasEngine {
   // Render concurrency lock
   private isRendering: boolean = false;
   private pendingRenderDoc: DesignDocument | null = null;
+  private pendingRenderPageIndex: number | null = null;
 
   constructor(container: HTMLDivElement, callbacks: CanvasEngineCallbacks) {
     this.container = container;
     this.callbacks = callbacks;
+    this.isReadOnly = Boolean(callbacks.isReadOnly);
     this.initStage();
     this.setupDropHandlers();
     this.setupZoomAndPan();
@@ -82,7 +87,7 @@ export class CanvasEngine {
       shadowOffset: { x: 0, y: 10 },
       shadowOpacity: 0.35,
       cornerRadius: 4,
-      listening: true, // Click page background to deselect
+      listening: true, // Click page background to deselect or pan
     });
     this.pageGroup.add(this.pageBackground);
 
@@ -99,7 +104,16 @@ export class CanvasEngine {
       }
     });
 
-    // Transformer for selection, resizing, and rotation
+    // Transformer for selection, resizing, and rotation (only enabled if not read-only)
+    if (!this.isReadOnly) {
+      this.initTransformer();
+    }
+    this.layer.draw();
+  }
+
+  private initTransformer(): void {
+    if (this.transformer || !this.layer) return;
+
     this.transformer = new Konva.Transformer({
       borderStroke: "#3b82f6",
       borderStrokeWidth: 1.5,
@@ -129,7 +143,6 @@ export class CanvasEngine {
     });
 
     this.layer.add(this.transformer);
-    this.layer.draw();
   }
 
   /**
@@ -138,7 +151,7 @@ export class CanvasEngine {
   private setupZoomAndPan(): void {
     if (!this.stage) return;
 
-    // 1. Mouse Wheel & Trackpad Pinch-to-Zoom
+    // 1. Mouse Wheel & Trackpad Pinch-to-Zoom / Two-Finger Panning
     this.stage.on("wheel", (e) => {
       e.evt.preventDefault();
       if (!this.stage) return;
@@ -147,47 +160,34 @@ export class CanvasEngine {
       const pointer = this.stage.getPointerPosition();
       if (!pointer) return;
 
-      // Trackpad pinch (browser sets ctrlKey) or mouse wheel with Ctrl/Cmd or normal scroll
-      const isPinch = e.evt.ctrlKey || e.evt.metaKey;
+      // Trackpad pinch (browser sets ctrlKey) or mouse wheel with Ctrl/Cmd
+      const isPinchOrCtrl = e.evt.ctrlKey || e.evt.metaKey;
 
-      // If user is holding shift, pan horizontally
-      if (e.evt.shiftKey && !isPinch) {
+      if (!isPinchOrCtrl) {
+        // Natural Pan: Trackpad scroll or mouse wheel in any direction
+        // ShiftKey: pan horizontally
+        const dx = e.evt.shiftKey ? e.evt.deltaY : e.evt.deltaX;
+        const dy = e.evt.shiftKey ? 0 : e.evt.deltaY;
+
         const currentPos = this.stage.position();
         this.stage.position({
-          x: currentPos.x - e.evt.deltaY,
-          y: currentPos.y,
+          x: currentPos.x - dx,
+          y: currentPos.y - dy,
         });
         this.stage.batchDraw();
         return;
       }
 
-      // If user is just scrolling vertically without modifier, we can either pan or zoom.
-      // Standard in design canvas (Figma/Canva/Illustrator):
-      // Trackpad two-finger scroll pans, pinch zooms. Normal mouse wheel zooms with/without ctrl.
-      // If deltaMode is line (mouse wheel), zoom. If deltaMode is pixel and not ctrl, pan!
-      if (!isPinch && e.evt.deltaMode === 0 && Math.abs(e.evt.deltaX) > 0) {
-        // Two-finger trackpad panning
-        const currentPos = this.stage.position();
-        this.stage.position({
-          x: currentPos.x - e.evt.deltaX,
-          y: currentPos.y - e.evt.deltaY,
-        });
-        this.stage.batchDraw();
-        return;
-      }
-
-      // Zoom towards mouse pointer position
+      // Smooth zoom towards pointer position
       const mousePointTo = {
         x: (pointer.x - this.stage.x()) / oldScale,
         y: (pointer.y - this.stage.y()) / oldScale,
       };
 
-      // Zoom factor
-      const zoomFactor = isPinch ? 1.05 : 1.15;
-      const direction = e.evt.deltaY > 0 ? -1 : 1;
-      let newScale = direction > 0 ? oldScale * zoomFactor : oldScale / zoomFactor;
+      const zoomFactor = Math.pow(0.998, e.evt.deltaY);
+      let newScale = oldScale * zoomFactor;
 
-      // Clamp zoom between 10% and 500%
+      // Clamp zoom between 10% (0.1) and 500% (5.0)
       newScale = Math.max(0.1, Math.min(5, Math.round(newScale * 100) / 100));
 
       this.zoomLevel = newScale;
@@ -203,15 +203,15 @@ export class CanvasEngine {
       this.callbacks.onZoomChange?.(this.zoomLevel);
     });
 
-    // 2. Pan with Middle Click or Spacebar + Drag
+    // 2. Pan with Middle Click, Spacebar + Drag, or Empty Canvas Drag
     this.stage.on("mousedown touchstart", (e) => {
       if (!this.stage) return;
-      // Middle click (button 1) or Left click while Space is held or clicking on empty stage
       const isMiddleClick = e.evt.button === 1;
       const isSpaceDrag = this.isSpacePressed && e.evt.button === 0;
-      const isEmptyStageClick = e.target === this.stage && e.evt.button === 0;
+      const isEmptyStageClick = (e.target === this.stage || e.target === this.pageBackground) && e.evt.button === 0;
+      const isReadOnlyDrag = this.isReadOnly && e.evt.button === 0;
 
-      if (isMiddleClick || isSpaceDrag || isEmptyStageClick) {
+      if (isMiddleClick || isSpaceDrag || isEmptyStageClick || isReadOnlyDrag) {
         this.isPanning = true;
         this.lastPointerPos = this.stage.getPointerPosition();
         if (this.container) {
@@ -280,6 +280,8 @@ export class CanvasEngine {
   }
 
   private setupDropHandlers(): void {
+    if (this.isReadOnly || !this.container) return;
+
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
       if (e.dataTransfer) {
@@ -324,21 +326,26 @@ export class CanvasEngine {
   /**
    * Render or synchronize the entire DesignDocument on canvas
    */
-  public async renderDocument(doc: DesignDocument): Promise<void> {
+  public async renderDocument(doc: DesignDocument, targetPageIndex?: number): Promise<void> {
     if (!this.stage || !this.layer || !this.pageGroup || !this.pageBackground) return;
 
-    // Concurrency lock: queue latest document if already rendering
+    if (typeof targetPageIndex === "number" && !isNaN(targetPageIndex) && targetPageIndex >= 0) {
+      this.activePageIndex = targetPageIndex;
+    }
+
+    const isFirstLoad = !this.currentDoc;
+    this.currentDoc = doc;
+
+    // Concurrency lock: queue latest document and requested page if already rendering
     if (this.isRendering) {
       this.pendingRenderDoc = doc;
+      this.pendingRenderPageIndex = this.activePageIndex;
       return;
     }
 
     this.isRendering = true;
 
     try {
-      const isFirstLoad = !this.currentDoc;
-      this.currentDoc = doc;
-
       // Update page size and background color
       this.pageBackground.width(doc.width);
       this.pageBackground.height(doc.height);
@@ -349,13 +356,17 @@ export class CanvasEngine {
         this.fitToScreen();
       }
 
-      const activePage = doc.pages[0];
+      const pageCount = doc.pages ? doc.pages.length : 0;
+      if (this.activePageIndex >= pageCount) {
+        this.activePageIndex = Math.max(0, pageCount - 1);
+      }
+      const activePage = (doc.pages && doc.pages[this.activePageIndex]) || doc.pages[0];
       const elements = activePage ? activePage.elements : [];
 
       // Keep track of active IDs
       const currentElementIds = new Set(elements.map((el) => el.id));
 
-      // Remove nodes that are no longer in document
+      // Remove nodes that are no longer in document / active page
       this.nodeMap.forEach((node, id) => {
         if (!currentElementIds.has(id)) {
           node.destroy();
@@ -403,8 +414,10 @@ export class CanvasEngine {
       this.isRendering = false;
       if (this.pendingRenderDoc) {
         const nextDoc = this.pendingRenderDoc;
+        const nextIdx = this.pendingRenderPageIndex;
         this.pendingRenderDoc = null;
-        this.renderDocument(nextDoc);
+        this.pendingRenderPageIndex = null;
+        this.renderDocument(nextDoc, nextIdx ?? undefined);
       }
     }
   }
@@ -457,7 +470,8 @@ export class CanvasEngine {
       height: el.height,
       rotation: el.rotation || 0,
       opacity: el.opacity ?? 1,
-      draggable: !el.locked,
+      draggable: this.isReadOnly ? false : !el.locked,
+      listening: !this.isReadOnly,
     };
 
     if (el.type === "shape") {
@@ -562,7 +576,8 @@ export class CanvasEngine {
       node.height(el.height);
       node.rotation(el.rotation || 0);
       node.opacity(el.opacity ?? 1);
-      node.draggable(!el.locked);
+      node.draggable(this.isReadOnly ? false : !el.locked);
+      node.listening(!this.isReadOnly);
     }
 
     if (el.type === "shape") {
@@ -622,6 +637,12 @@ export class CanvasEngine {
   }
 
   private setupNodeEvents(node: Konva.Node, elementId: string): void {
+    if (this.isReadOnly) {
+      node.listening(false);
+      node.draggable(false);
+      return;
+    }
+
     node.on("click tap", (e) => {
       e.cancelBubble = true;
       this.select(elementId);
@@ -674,7 +695,7 @@ export class CanvasEngine {
   }
 
   public select(elementId: string): void {
-    if (!this.transformer || !this.layer) return;
+    if (this.isReadOnly || !this.transformer || !this.layer) return;
 
     const node = this.nodeMap.get(elementId);
     if (node) {
@@ -691,6 +712,20 @@ export class CanvasEngine {
     this.transformer.nodes([]);
     this.layer.batchDraw();
     this.callbacks.onSelect(null);
+  }
+
+  public setActivePageIndex(index: number): void {
+    if (this.activePageIndex !== index) {
+      this.activePageIndex = index;
+      this.deselect();
+      if (this.currentDoc) {
+        this.renderDocument(this.currentDoc, index);
+      }
+    }
+  }
+
+  public getActivePageIndex(): number {
+    return this.activePageIndex;
   }
 
   /**
@@ -823,6 +858,38 @@ export class CanvasEngine {
         this.layer?.batchDraw();
       }
     }
+  }
+
+  public setReadOnly(readOnly: boolean): void {
+    this.isReadOnly = readOnly;
+    if (readOnly) {
+      this.deselect();
+      this.nodeMap.forEach((node) => {
+        node.draggable(false);
+        node.listening(false);
+      });
+      if (this.transformer) {
+        this.transformer.nodes([]);
+        this.transformer.visible(false);
+      }
+    } else {
+      if (!this.transformer && this.layer) {
+        this.initTransformer();
+      }
+      this.nodeMap.forEach((node, id) => {
+        const el = this.currentDoc?.pages[this.activePageIndex]?.elements.find((e) => e.id === id);
+        node.draggable(el ? !el.locked : true);
+        node.listening(true);
+      });
+      if (this.transformer) {
+        this.transformer.visible(true);
+      }
+    }
+    this.layer?.batchDraw();
+  }
+
+  public getReadOnly(): boolean {
+    return this.isReadOnly;
   }
 
   public handleResize(): void {

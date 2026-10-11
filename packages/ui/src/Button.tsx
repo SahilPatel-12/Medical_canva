@@ -22,7 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
     justifyContent: "center",
     gap: "0.5rem",
     fontWeight: 500,
-    borderRadius: "8px",
+    borderRadius: "6px",
     cursor: disabled ? "not-allowed" : "pointer",
     transition: "all 0.15s ease",
     border: "1px solid transparent",
@@ -35,32 +35,33 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizeStyles: Record<string, React.CSSProperties> = {
-    xs: { padding: variant === "icon" ? "4px" : "4px 8px", fontSize: "12px", height: "26px" },
-    sm: { padding: variant === "icon" ? "6px" : "6px 12px", fontSize: "13px", height: "32px" },
-    md: { padding: variant === "icon" ? "8px" : "8px 16px", fontSize: "14px", height: "38px" },
-    lg: { padding: variant === "icon" ? "12px" : "12px 20px", fontSize: "15px", height: "46px" },
+    xs: { padding: variant === "icon" ? "4px" : "3px 8px", fontSize: "12px", height: "26px" },
+    sm: { padding: variant === "icon" ? "6px" : "5px 12px", fontSize: "13px", height: "32px" },
+    md: { padding: variant === "icon" ? "8px" : "7px 16px", fontSize: "14px", height: "38px" },
+    lg: { padding: variant === "icon" ? "12px" : "10px 20px", fontSize: "15px", height: "44px" },
   };
 
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      backgroundColor: "#3b82f6",
+      backgroundColor: "#2563eb",
       color: "#ffffff",
-      borderColor: "#2563eb",
-      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+      borderColor: "#1d4ed8",
+      boxShadow: "0 1px 2px rgba(37, 99, 235, 0.2)",
     },
     secondary: {
-      backgroundColor: "#27272a",
-      color: "#f4f4f5",
-      borderColor: "#3f3f46",
+      backgroundColor: "#f1f5f9",
+      color: "#0f172a",
+      borderColor: "#e2e8f0",
     },
     outline: {
-      backgroundColor: "transparent",
-      color: "#e4e4e7",
-      borderColor: "#3f3f46",
+      backgroundColor: "#ffffff",
+      color: "#334155",
+      borderColor: "#cbd5e1",
+      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
     },
     ghost: {
       backgroundColor: "transparent",
-      color: "#a1a1aa",
+      color: "#475569",
       borderColor: "transparent",
     },
     danger: {
@@ -70,7 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
     },
     icon: {
       backgroundColor: "transparent",
-      color: "#d4d4d8",
+      color: "#475569",
       borderColor: "transparent",
       borderRadius: "6px",
     },

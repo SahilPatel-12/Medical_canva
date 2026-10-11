@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@design-platform/api-client": "workspace:*",
+    "@design-platform/auth": "workspace:*",
     "@design-platform/database": "workspace:*",
     "@design-platform/editor": "workspace:*",
     "@design-platform/types": "workspace:*",

@@ -10,13 +10,15 @@ import {
 } from "@design-platform/types";
 import { EditorStore, EditorState } from "./EditorStore";
 import { CanvasEngine } from "../canvas/CanvasEngine";
+import { fetchSvgMarkup } from "../canvas/svgUtils";
 
 export interface UseEditorOptions {
   initialDocument: DesignDocument;
   repository?: DesignRepository;
+  isReadOnly?: boolean;
 }
 
-export function useEditor({ initialDocument, repository }: UseEditorOptions) {
+export function useEditor({ initialDocument, repository, isReadOnly = false }: UseEditorOptions) {
   const storeRef = useRef<EditorStore>(new EditorStore(initialDocument));
   const engineRef = useRef<CanvasEngine | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -27,18 +29,22 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
   useEffect(() => {
     let lastDoc = storeRef.current.getDocument();
     let lastSelectedId = storeRef.current.getSelectedId();
+    let lastActivePageIndex = storeRef.current.getActivePageIndex();
 
     const unsubscribe = storeRef.current.subscribe((newState: EditorState) => {
       setState(newState);
-      // Synchronize CanvasEngine with updated document only when document reference changed
+      // Synchronize CanvasEngine with updated document and active page
       if (engineRef.current) {
-        if (newState.document !== lastDoc) {
+        const docChanged = newState.document !== lastDoc;
+        const pageChanged = newState.activePageIndex !== lastActivePageIndex;
+        if (docChanged || pageChanged) {
           lastDoc = newState.document;
-          engineRef.current.renderDocument(newState.document);
+          lastActivePageIndex = newState.activePageIndex;
+          engineRef.current.renderDocument(newState.document, newState.activePageIndex);
         }
         if (newState.selectedId !== lastSelectedId) {
           lastSelectedId = newState.selectedId;
-          if (newState.selectedId) {
+          if (newState.selectedId && !isReadOnly) {
             engineRef.current.select(newState.selectedId);
           } else {
             engineRef.current.deselect();
@@ -48,7 +54,14 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [isReadOnly]);
+
+  // Synchronize dynamic read-only changes
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setReadOnly(Boolean(isReadOnly));
+    }
+  }, [isReadOnly]);
 
   // Initialize CanvasEngine once DOM container mounts
   useEffect(() => {
@@ -56,18 +69,21 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
 
     const engine = new CanvasEngine(containerRef.current, {
       onSelect: (id) => {
-        storeRef.current.selectElement(id);
+        if (!isReadOnly) storeRef.current.selectElement(id);
       },
       onElementChange: (id, updates) => {
-        storeRef.current.updateElement(id, updates);
+        if (!isReadOnly) storeRef.current.updateElement(id, updates);
       },
       onDropAsset: (asset, position) => {
-        const newElement = storeRef.current.createFromAsset(asset, position);
-        storeRef.current.addElement(newElement);
+        if (!isReadOnly) {
+          const newElement = storeRef.current.createFromAsset(asset, position);
+          storeRef.current.addElement(newElement);
+        }
       },
       onZoomChange: (newZoom) => {
         storeRef.current.setZoom(newZoom);
       },
+      isReadOnly,
     });
 
     engineRef.current = engine;
@@ -215,15 +231,29 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
   }, [save]);
 
   // Element actions
-  const addAssetToCenter = useCallback((asset: Asset) => {
-    const doc = storeRef.current.getDocument();
-    const position = {
-      x: Math.round(doc.width / 2 - (asset.defaultWidth || 120) / 2),
-      y: Math.round(doc.height / 2 - (asset.defaultHeight || 120) / 2),
-    };
-    const element = storeRef.current.createFromAsset(asset, position);
-    storeRef.current.addElement(element);
-  }, []);
+  const addAssetToCenter = useCallback(
+    (asset: Asset, customPosition?: { x: number; y: number }) => {
+      const doc = storeRef.current.getDocument();
+      const position = customPosition || {
+        x: Math.round(doc.width / 2 - (asset.defaultWidth || 120) / 2),
+        y: Math.round(doc.height / 2 - (asset.defaultHeight || 120) / 2),
+      };
+      const element = storeRef.current.createFromAsset(asset, position);
+      storeRef.current.addElement(element);
+
+      // If asset source is a remote URL, asynchronously fetch and resolve the raw vector SVG markup
+      const sourceUrl =
+        asset.url || (asset.source?.startsWith("http") ? asset.source : undefined);
+      if (sourceUrl && asset.type === "svg") {
+        fetchSvgMarkup(sourceUrl).then((markup) => {
+          if (markup) {
+            storeRef.current.resolveAssetSvgMarkup(element.id, markup);
+          }
+        });
+      }
+    },
+    []
+  );
 
   const addShape = useCallback((shapeType: "rectangle" | "circle" | "line") => {
     const doc = storeRef.current.getDocument();
@@ -294,7 +324,7 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
     storeRef.current.addElement(newElement);
   }, []);
 
-  const addText = useCallback((variant: "heading" | "subheading" | "body") => {
+  const addText = useCallback((variant: "heading" | "subheading" | "body" | "label") => {
     const doc = storeRef.current.getDocument();
     const id = `elem-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const position = {
@@ -325,20 +355,29 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
         text: "Add body description text here...",
         fontSize: 15,
         fontFamily: "Inter, -apple-system, sans-serif",
-        fill: "#52525b",
+        fill: "#475569",
         fontWeight: "normal",
         align: "left",
+      };
+    } else if ((variant as string) === "label") {
+      textProps = {
+        text: "Fig. 1 — Cellular Receptor",
+        fontSize: 13,
+        fontFamily: "Inter, -apple-system, sans-serif",
+        fill: "#0f172a",
+        fontWeight: "bold",
+        align: "center",
       };
     }
 
     const newElement: DesignElement = {
       id,
       type: "text",
-      name: "Text",
+      name: (variant as string) === "label" ? "Caption / Label" : "Text",
       x: position.x,
       y: position.y,
-      width: 260,
-      height: 60,
+      width: (variant as string) === "label" ? 220 : 260,
+      height: (variant as string) === "label" ? 36 : 60,
       rotation: 0,
       opacity: 1,
       properties: textProps,
@@ -421,10 +460,45 @@ export function useEditor({ initialDocument, repository }: UseEditorOptions) {
     },
     updateSelectedSvgColor: (fill?: string, stroke?: string) =>
       storeRef.current.updateSelectedSvgColor(fill, stroke),
+    updateSelectedSvgColorMap: (colorMap: Record<string, string>) =>
+      storeRef.current.updateSelectedSvgColorMap(colorMap),
+    resetSelectedSvgColors: () => storeRef.current.resetSelectedSvgColors(),
     setCanvasBackgroundColor: (color: string) => storeRef.current.setCanvasBackgroundColor(color),
+    setCanvasDimensions: (width: number, height: number) =>
+      storeRef.current.setCanvasDimensions(width, height),
+    exportImage: (pixelRatio: number = 2.0) =>
+      engineRef.current ? engineRef.current.exportThumbnail(pixelRatio) : "",
     renameDocument: (name: string) => storeRef.current.renameDocument(name),
     undo: () => storeRef.current.undo(),
     redo: () => storeRef.current.redo(),
+    // Canvas Pages
+    activePageIndex: state.activePageIndex,
+    pages: state.document.pages || [],
+    setActivePage: (index: number) => {
+      const safeIndex = typeof index === "number" && !isNaN(index) ? index : 0;
+      storeRef.current.setActivePageIndex(safeIndex);
+      if (engineRef.current) {
+        engineRef.current.setActivePageIndex(safeIndex);
+      }
+    },
+    addPage: (name?: string) =>
+      storeRef.current.addPage(typeof name === "string" ? name : undefined),
+    duplicatePage: (index?: number) =>
+      storeRef.current.duplicatePage(
+        typeof index === "number" && !isNaN(index) ? index : undefined
+      ),
+    deletePage: (index?: number) =>
+      storeRef.current.deletePage(typeof index === "number" && !isNaN(index) ? index : undefined),
+    reorderPages: (fromIndex: number, toIndex: number) => {
+      if (typeof fromIndex === "number" && typeof toIndex === "number") {
+        storeRef.current.reorderPages(fromIndex, toIndex);
+      }
+    },
+    setPageName: (index: number, name: string) => {
+      if (typeof index === "number" && typeof name === "string") {
+        storeRef.current.setPageName(index, name);
+      }
+    },
     // Zoom
     setZoom,
     zoomIn,

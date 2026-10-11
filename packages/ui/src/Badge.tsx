@@ -31,29 +31,29 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const variantStyles: Record<string, React.CSSProperties> = {
     default: {
-      backgroundColor: "#27272a",
-      color: "#a1a1aa",
-      border: "1px solid #3f3f46",
+      backgroundColor: "#f1f5f9",
+      color: "#475569",
+      border: "1px solid #e2e8f0",
     },
     primary: {
-      backgroundColor: "rgba(59, 130, 246, 0.15)",
-      color: "#60a5fa",
-      border: "1px solid rgba(59, 130, 246, 0.3)",
+      backgroundColor: "#eff6ff",
+      color: "#2563eb",
+      border: "1px solid #bfdbfe",
     },
     success: {
-      backgroundColor: "rgba(34, 197, 94, 0.15)",
-      color: "#4ade80",
-      border: "1px solid rgba(34, 197, 94, 0.3)",
+      backgroundColor: "#f0fdf4",
+      color: "#16a34a",
+      border: "1px solid #bbf7d0",
     },
     warning: {
-      backgroundColor: "rgba(234, 179, 8, 0.15)",
-      color: "#facc15",
-      border: "1px solid rgba(234, 179, 8, 0.3)",
+      backgroundColor: "#fffbeb",
+      color: "#d97706",
+      border: "1px solid #fde68a",
     },
     outline: {
-      backgroundColor: "transparent",
-      color: "#d4d4d8",
-      border: "1px solid #3f3f46",
+      backgroundColor: "#ffffff",
+      color: "#64748b",
+      border: "1px solid #cbd5e1",
     },
   };
 

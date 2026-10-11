@@ -15,11 +15,21 @@ export interface DropdownProps {
   trigger: React.ReactNode;
   items: DropdownItem[];
   align?: "left" | "right";
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
-export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = "right" }) => {
+export const Dropdown: React.FC<DropdownProps> = ({
+  trigger,
+  items,
+  align = "right",
+  onOpenChange,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -54,12 +64,12 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = "rig
             top: "calc(100% + 4px)",
             [align]: 0,
             zIndex: 1000,
-            minWidth: "160px",
-            backgroundColor: "#18181b",
-            border: "1px solid #27272a",
+            minWidth: "170px",
+            backgroundColor: "#ffffff",
+            border: "1px solid #e2e8f0",
             borderRadius: "8px",
             padding: "4px",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
             animation: "dropdownFadeIn 0.15s ease",
           }}
           onClick={(e) => e.stopPropagation()}
@@ -79,12 +89,13 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = "rig
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
-                padding: "6px 10px",
+                padding: "7px 10px",
                 fontSize: "0.8125rem",
                 borderRadius: "6px",
                 border: "none",
                 background: "transparent",
-                color: item.danger ? "#f87171" : "#e4e4e7",
+                color: item.danger ? "#dc2626" : "#1e293b",
+                fontWeight: 500,
                 cursor: item.disabled ? "not-allowed" : "pointer",
                 textAlign: "left",
                 fontFamily: "inherit",
@@ -94,8 +105,8 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = "rig
               onMouseEnter={(e) => {
                 if (!item.disabled) {
                   e.currentTarget.style.backgroundColor = item.danger
-                    ? "rgba(239, 68, 68, 0.15)"
-                    : "#27272a";
+                    ? "#fef2f2"
+                    : "#f1f5f9";
                 }
               }}
               onMouseLeave={(e) => {
@@ -103,7 +114,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = "rig
               }}
             >
               {item.icon && (
-                <span style={{ display: "inline-flex", alignItems: "center", fontSize: "14px" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", fontSize: "14px", color: item.danger ? "#dc2626" : "#64748b" }}>
                   {item.icon}
                 </span>
               )}

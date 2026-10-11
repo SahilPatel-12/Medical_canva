@@ -1,4 +1,6 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
+export type { SupabaseClient, RealtimeChannel };
+
 
 let cachedClient: SupabaseClient | null = null;
 
@@ -52,10 +54,12 @@ export function getSupabaseClient(config?: SupabaseConfig): SupabaseClient | nul
     return null;
   }
 
+  const isBrowser = typeof globalThis !== "undefined" && "window" in globalThis;
+
   const client = createClient(credentials.url, credentials.key, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: isBrowser,
+      autoRefreshToken: isBrowser,
     },
   });
 
@@ -67,12 +71,30 @@ export function getSupabaseClient(config?: SupabaseConfig): SupabaseClient | nul
 }
 
 /**
+ * Creates a user-scoped Supabase client that forwards the caller's JWT in Authorization header.
+ * All queries executed with this client are evaluated under the user's role and PostgreSQL RLS.
+ */
+export function createUserScopedClient(authToken?: string, customConfig?: SupabaseConfig): SupabaseClient {
+  const creds = getSupabaseCredentials(customConfig);
+  if (!creds) {
+    throw new Error("[Supabase Config Error] Missing Supabase URL or Anon Key.");
+  }
+
+  return createClient(creds.url, creds.key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+    },
+  });
+}
+
+/**
  * Privileged Supabase client instance using the server-only service-role key.
  * This client bypasses Row Level Security (RLS) and MUST NEVER be exposed to browser clients.
  * Throws immediately if invoked in a browser/client environment.
  */
 export function getSupabaseAdminClient(): SupabaseClient {
-  if (typeof window !== "undefined") {
+  if (typeof globalThis !== "undefined" && "window" in globalThis) {
     throw new Error(
       "[Security Error] getSupabaseAdminClient() can only be called in server-side environments."
     );

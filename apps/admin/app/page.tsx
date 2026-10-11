@@ -7,10 +7,8 @@ import {
   Trash2,
   Copy,
   Check,
-  Sparkles,
   Cloud,
   Database,
-  ExternalLink,
   Plus,
   RefreshCw,
   Image as ImageIcon,
@@ -18,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Asset } from "@design-platform/types";
+import { CANONICAL_TAXONOMY } from "@design-platform/editor";
 
 export default function AdminAssetManagementPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -43,7 +42,8 @@ export default function AdminAssetManagementPage() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [assetName, setAssetName] = useState("");
-  const [formCategory, setFormCategory] = useState("science");
+  const [formCategorySlug, setFormCategorySlug] = useState("cell-types");
+  const [formSubcategorySlug, setFormSubcategorySlug] = useState("generic-cells");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isAddingNewCat, setIsAddingNewCat] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
@@ -135,14 +135,25 @@ export default function AdminAssetManagementPage() {
 
     try {
       setIsUploading(true);
+      const catObj = CANONICAL_TAXONOMY.find((c) => c.slug === formCategorySlug);
+      const subObj = catObj?.subcategories.find((s) => s.slug === formSubcategorySlug);
+
       const finalCategory = isAddingNewCat && newCategoryName.trim()
         ? newCategoryName.trim().toLowerCase()
-        : formCategory;
+        : catObj?.name || "Cell Types";
 
       const formData = new FormData();
       formData.append("file", file);
       formData.append("name", assetName.trim() || file.name);
       formData.append("category", finalCategory);
+      if (catObj) {
+        formData.append("categorySlug", catObj.slug);
+      }
+      if (subObj) {
+        formData.append("subcategorySlug", subObj.slug);
+        formData.append("subcategoryId", subObj.id);
+        formData.append("subcategoryName", subObj.name);
+      }
       formData.append("tags", tagsInput);
       formData.append("width", String(assetWidth));
       formData.append("height", String(assetHeight));
@@ -174,6 +185,8 @@ export default function AdminAssetManagementPage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setAssetName("");
+    setFormCategorySlug("cell-types");
+    setFormSubcategorySlug("generic-cells");
     setTagsInput("");
     setIsAddingNewCat(false);
     setNewCategoryName("");
@@ -760,7 +773,7 @@ export default function AdminAssetManagementPage() {
                         color: "#93c5fd",
                       }}
                     >
-                      {asset.category}
+                      {asset.subcategoryName ? `${asset.category} • ${asset.subcategoryName}` : asset.category}
                     </span>
 
                     {/* Type Badge */}
@@ -1047,48 +1060,22 @@ export default function AdminAssetManagementPage() {
                 />
               </div>
 
-              {/* Category Selector + Add New */}
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                  <label style={{ fontSize: "12px", color: "#a1a1aa" }}>
-                    Category
+              {/* Category & Subcategory Selectors */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", color: "#a1a1aa", marginBottom: "4px" }}>
+                    Canonical Category (15)
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingNewCat(!isAddingNewCat)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "#3b82f6",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {isAddingNewCat ? "Select Existing" : "+ New Category"}
-                  </button>
-                </div>
-
-                {isAddingNewCat ? (
-                  <input
-                    type="text"
-                    placeholder="Enter new category name (e.g. anatomy, pathology)"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      backgroundColor: "#18181b",
-                      border: "1px solid #3b82f6",
-                      borderRadius: "6px",
-                      color: "#f4f4f5",
-                      fontSize: "13px",
-                      outline: "none",
-                    }}
-                  />
-                ) : (
                   <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
+                    value={formCategorySlug}
+                    onChange={(e) => {
+                      const newCatSlug = e.target.value;
+                      setFormCategorySlug(newCatSlug);
+                      const cat = CANONICAL_TAXONOMY.find((c) => c.slug === newCatSlug);
+                      if (cat && cat.subcategories.length > 0) {
+                        setFormSubcategorySlug(cat.subcategories[0].slug);
+                      }
+                    }}
                     style={{
                       width: "100%",
                       padding: "8px 12px",
@@ -1098,16 +1085,43 @@ export default function AdminAssetManagementPage() {
                       color: "#f4f4f5",
                       fontSize: "13px",
                       outline: "none",
-                      textTransform: "capitalize",
                     }}
                   >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
+                    {CANONICAL_TAXONOMY.map((cat) => (
+                      <option key={cat.slug} value={cat.slug}>
+                        {cat.name}
                       </option>
                     ))}
                   </select>
-                )}
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", color: "#a1a1aa", marginBottom: "4px" }}>
+                    Subcategory (87)
+                  </label>
+                  <select
+                    value={formSubcategorySlug}
+                    onChange={(e) => setFormSubcategorySlug(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      backgroundColor: "#18181b",
+                      border: "1px solid #27272a",
+                      borderRadius: "6px",
+                      color: "#f4f4f5",
+                      fontSize: "13px",
+                      outline: "none",
+                    }}
+                  >
+                    {(
+                      CANONICAL_TAXONOMY.find((c) => c.slug === formCategorySlug)?.subcategories || []
+                    ).map((sub) => (
+                      <option key={sub.id} value={sub.slug}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Tags */}

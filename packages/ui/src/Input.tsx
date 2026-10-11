@@ -20,7 +20,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             style={{
               fontSize: "0.8125rem",
               fontWeight: 500,
-              color: "#e4e4e7",
+              color: "#334155",
               letterSpacing: "0.01em",
             }}
           >
@@ -35,7 +35,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 left: "0.75rem",
                 display: "flex",
                 alignItems: "center",
-                color: "#71717a",
+                color: "#64748b",
                 pointerEvents: "none",
               }}
             >
@@ -47,15 +47,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             style={{
               width: "100%",
-              backgroundColor: "#18181b",
-              color: "#f4f4f5",
-              border: `1px solid ${error ? "#ef4444" : "#3f3f46"}`,
-              borderRadius: "8px",
-              padding: leftIcon ? "0.5rem 0.75rem 0.5rem 2.25rem" : "0.5rem 0.75rem",
+              backgroundColor: "#ffffff",
+              color: "#0f172a",
+              border: `1px solid ${error ? "#ef4444" : "#cbd5e1"}`,
+              borderRadius: "6px",
+              padding: leftIcon ? "0.45rem 0.75rem 0.45rem 2.25rem" : "0.45rem 0.75rem",
               fontSize: "0.875rem",
               outline: "none",
               transition: "border-color 0.15s ease, box-shadow 0.15s ease",
               fontFamily: "inherit",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
               ...style,
             }}
             {...props}
@@ -76,7 +77,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {error ? (
           <span style={{ fontSize: "0.75rem", color: "#ef4444" }}>{error}</span>
         ) : helperText ? (
-          <span style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>{helperText}</span>
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{helperText}</span>
         ) : null}
       </div>
     );

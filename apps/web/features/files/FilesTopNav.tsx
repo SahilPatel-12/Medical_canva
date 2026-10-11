@@ -1,9 +1,24 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Sparkles, Settings } from "lucide-react";
-import { Button, Badge } from "@design-platform/ui";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  Plus,
+  Sparkles,
+  LogOut,
+  User as UserIcon,
+  Settings,
+  Building2,
+  ChevronDown,
+  Check,
+  UserPlus,
+} from "lucide-react";
+import { Button, Badge, Dropdown, DropdownItem } from "@design-platform/ui";
+import { useAuth } from "@design-platform/auth";
+import { resetDesignRepository } from "../../lib/repository";
+import { WorkspaceSettingsDialog } from "../workspaces/WorkspaceSettingsDialog";
 
 export interface FilesTopNavProps {
   searchQuery: string;
@@ -16,6 +31,88 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
   onSearchChange,
   onCreateNew,
 }) => {
+  const router = useRouter();
+  const {
+    user,
+    profile,
+    currentWorkspace,
+    workspaces,
+    switchWorkspace,
+    refreshWorkspace,
+    signOut,
+  } = useAuth();
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    resetDesignRepository();
+    await signOut();
+    router.push("/login");
+  };
+
+  const displayName =
+    profile?.displayName ||
+    (user?.user_metadata?.display_name as string) ||
+    user?.email?.split("@")[0] ||
+    "User";
+  const initials = displayName.substring(0, 2).toUpperCase();
+
+  // Workspace Switcher Dropdown Items
+  const workspaceMenuItems: DropdownItem[] = [
+    ...(workspaces.length > 0
+      ? workspaces.map((ws) => ({
+          id: `ws-${ws.id}`,
+          label: `${ws.name} (${ws.role})`,
+          icon: ws.id === currentWorkspace?.id ? <Check size={14} style={{ color: "#3b82f6" }} /> : <Building2 size={14} />,
+          onClick: () => switchWorkspace(ws.id),
+        }))
+      : currentWorkspace
+      ? [
+          {
+            id: `ws-${currentWorkspace.id}`,
+            label: `${currentWorkspace.name} (${currentWorkspace.role})`,
+            icon: <Check size={14} style={{ color: "#3b82f6" }} />,
+            onClick: () => {},
+          },
+        ]
+      : []),
+    {
+      id: "manage-workspace",
+      label: "Workspace Members & Settings",
+      icon: <Settings size={14} />,
+      onClick: () => setIsSettingsOpen(true),
+    },
+  ];
+
+  const userMenuItems: DropdownItem[] = user
+    ? [
+        {
+          id: "user-identity",
+          label: user.email || displayName,
+          icon: <UserIcon size={14} />,
+          disabled: true,
+          onClick: () => {},
+        },
+        ...(currentWorkspace
+          ? [
+              {
+                id: "workspace-settings-action",
+                label: `${currentWorkspace.name} Settings`,
+                icon: <Settings size={14} />,
+                onClick: () => setIsSettingsOpen(true),
+              },
+            ]
+          : []),
+        {
+          id: "logout",
+          label: "Sign Out",
+          icon: <LogOut size={14} />,
+          danger: true,
+          onClick: handleLogout,
+        },
+      ]
+    : [];
+
   return (
     <header
       style={{
@@ -99,6 +196,63 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
               Coming Soon
             </Badge>
           </div>
+
+          {/* Workspace Selector Dropdown */}
+          {user && currentWorkspace && (
+            <Dropdown
+              align="left"
+              items={workspaceMenuItems}
+              trigger={
+                <button
+                  type="button"
+                  id="workspace-selector-dropdown-btn"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    backgroundColor: "#18181b",
+                    border: "1px solid #27272a",
+                    borderRadius: "8px",
+                    padding: "4px 10px",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    color: "#f4f4f5",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#27272a")}
+                >
+                  <Building2 size={14} style={{ color: "#3b82f6" }} />
+                  <span
+                    style={{
+                      maxWidth: "150px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentWorkspace.name}
+                  </span>
+                  <Badge
+                    variant={
+                      currentWorkspace.role === "owner"
+                        ? "primary"
+                        : currentWorkspace.role === "admin"
+                        ? "warning"
+                        : currentWorkspace.role === "editor"
+                        ? "success"
+                        : "outline"
+                    }
+                    size="sm"
+                  >
+                    {currentWorkspace.role.toUpperCase()}
+                  </Badge>
+                  <ChevronDown size={12} style={{ color: "#71717a" }} />
+                </button>
+              }
+            />
+          )}
         </nav>
       </div>
 
@@ -144,45 +298,89 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
           Create New
         </Button>
 
-        <button
-          type="button"
-          aria-label="Settings"
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#71717a",
-            padding: "8px",
-            borderRadius: "6px",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f4f5")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#71717a")}
-        >
-          <Settings size={18} />
-        </button>
+        {currentWorkspace && (
+          <button
+            type="button"
+            aria-label="Workspace Settings"
+            id="workspace-settings-gear-btn"
+            onClick={() => setIsSettingsOpen(true)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#71717a",
+              padding: "8px",
+              borderRadius: "6px",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f4f5")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#71717a")}
+            title="Workspace Settings & Members"
+          >
+            <Settings size={18} />
+          </button>
+        )}
 
-        {/* User Avatar */}
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            backgroundColor: "#27272a",
-            border: "1px solid #3f3f46",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            color: "#e4e4e7",
-          }}
-          title="Researcher Account"
-        >
-          SP
-        </div>
+        {/* User Account / Auth */}
+        {user ? (
+          <Dropdown
+            align="right"
+            items={userMenuItems}
+            trigger={
+              <button
+                type="button"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  backgroundColor: "#27272a",
+                  border: "1px solid #3f3f46",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "#e4e4e7",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+                title={user.email || displayName}
+                aria-label="User account menu"
+              >
+                {initials}
+              </button>
+            }
+          />
+        ) : (
+          <Link
+            href="/login"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "6px 14px",
+              borderRadius: "6px",
+              backgroundColor: "#2563eb",
+              color: "#ffffff",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              textDecoration: "none",
+            }}
+          >
+            Sign In
+          </Link>
+        )}
       </div>
+
+      {/* Workspace Settings Dialog */}
+      {currentWorkspace && (
+        <WorkspaceSettingsDialog
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          workspace={currentWorkspace}
+          onWorkspaceUpdated={refreshWorkspace}
+        />
+      )}
     </header>
   );
 };

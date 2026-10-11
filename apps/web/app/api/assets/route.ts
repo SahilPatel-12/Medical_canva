@@ -7,10 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category") || undefined;
+    const subcategory = searchParams.get("subcategory") || undefined;
     const search = searchParams.get("search") || undefined;
 
     const repo = new SupabaseAssetRepository();
-    const assets = await repo.list({ category, search });
+    const assets = await repo.list({ category, subcategory, search });
     const categories = await repo.getCategories();
 
     return NextResponse.json({

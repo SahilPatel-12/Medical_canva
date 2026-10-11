@@ -11,15 +11,15 @@ export interface ColorPickerProps {
 
 const DEFAULT_PRESETS = [
   "#ffffff",
-  "#000000",
+  "#0f172a",
   "#ef4444", // Red
   "#f97316", // Orange
   "#f59e0b", // Amber
   "#10b981", // Emerald
   "#06b6d4", // Cyan
-  "#3b82f6", // Blue
-  "#6366f1", // Indigo
-  "#8b5cf6", // Purple
+  "#2563eb", // Blue
+  "#4f46e5", // Indigo
+  "#7c3aed", // Purple
   "#ec4899", // Pink
   "#64748b", // Slate
 ];
@@ -31,15 +31,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   presetColors = DEFAULT_PRESETS,
 }) => {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
       {label && (
         <span
           style={{
             fontSize: "0.75rem",
-            fontWeight: 500,
-            color: "#a1a1aa",
+            fontWeight: 600,
+            color: "#475569",
             textTransform: "uppercase",
-            letterSpacing: "0.05em",
+            letterSpacing: "0.04em",
           }}
         >
           {label}
@@ -51,18 +51,18 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         <div
           style={{
             position: "relative",
-            width: "32px",
-            height: "32px",
+            width: "30px",
+            height: "30px",
             borderRadius: "6px",
-            border: "1px solid #3f3f46",
+            border: "1px solid #cbd5e1",
             overflow: "hidden",
             flexShrink: 0,
-            boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.1)",
+            boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05)",
           }}
         >
           <input
             type="color"
-            value={value.startsWith("#") && value.length === 7 ? value : "#3b82f6"}
+            value={value && value.startsWith("#") && value.length === 7 ? value : "#2563eb"}
             onChange={(e) => onChange(e.target.value)}
             style={{
               position: "absolute",
@@ -84,14 +84,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           placeholder="#000000"
           style={{
             flex: 1,
-            backgroundColor: "#18181b",
-            color: "#f4f4f5",
-            border: "1px solid #3f3f46",
+            backgroundColor: "#ffffff",
+            color: "#0f172a",
+            border: "1px solid #cbd5e1",
             borderRadius: "6px",
             padding: "4px 8px",
             fontSize: "0.8125rem",
             fontFamily: "monospace",
             outline: "none",
+            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
           }}
         />
       </div>
@@ -106,7 +107,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         }}
       >
         {presetColors.map((color) => {
-          const isSelected = value.toLowerCase() === color.toLowerCase();
+          const isSelected = value?.toLowerCase() === color.toLowerCase();
           return (
             <button
               key={color}
@@ -118,12 +119,13 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                 aspectRatio: "1",
                 borderRadius: "4px",
                 backgroundColor: color,
-                border: isSelected ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.15)",
+                border: isSelected ? "2px solid #2563eb" : "1px solid rgba(0, 0, 0, 0.15)",
                 cursor: "pointer",
                 padding: 0,
                 outline: "none",
                 transform: isSelected ? "scale(1.1)" : "scale(1)",
                 transition: "transform 0.1s ease",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.06)",
               }}
             />
           );

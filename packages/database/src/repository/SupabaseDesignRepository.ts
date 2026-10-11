@@ -1,20 +1,45 @@
-import { CreateDesignInput, DesignDocument, DesignRepository } from "@design-platform/types";
-import { getSupabaseClient, SupabaseConfig } from "../client";
-import { DesignTableRow } from "../types";
+import { CreateDesignInput, DesignDocument, DesignRepository, sanitizePages } from "@design-platform/types";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseClient, SupabaseConfig } from "../client.js";
+import { DesignTableRow } from "../types.js";
+
+export interface SupabaseDesignRepositoryOptions {
+  workspaceId?: string;
+  client?: SupabaseClient;
+  config?: SupabaseConfig;
+  fallbackRepo?: DesignRepository;
+}
 
 export class SupabaseDesignRepository implements DesignRepository {
-  private fallbackRepo?: DesignRepository;
+  private workspaceId?: string;
+  private client?: SupabaseClient;
   private config?: SupabaseConfig;
-  private hasLoggedMigrationHint: boolean = false;
+  private fallbackRepo?: DesignRepository;
 
-  constructor(options?: { fallbackRepo?: DesignRepository; config?: SupabaseConfig }) {
-    this.fallbackRepo = options?.fallbackRepo;
+  constructor(options?: SupabaseDesignRepositoryOptions) {
+    this.workspaceId = options?.workspaceId;
+    this.client = options?.client;
     this.config = options?.config;
+    this.fallbackRepo = options?.fallbackRepo;
   }
 
-  private mapRowToDocument(row: DesignTableRow): DesignDocument {
+  public setWorkspaceId(workspaceId?: string): void {
+    this.workspaceId = workspaceId;
+  }
+
+  public getWorkspaceId(): string | undefined {
+    return this.workspaceId;
+  }
+
+  private getClient(): SupabaseClient | null {
+    if (this.client) return this.client;
+    return getSupabaseClient(this.config);
+  }
+
+  public mapRowToDocument(row: DesignTableRow): DesignDocument {
     return {
       id: row.id,
+      workspaceId: row.workspace_id || undefined,
       name: row.name,
       width: row.width,
       height: row.height,
@@ -28,36 +53,20 @@ export class SupabaseDesignRepository implements DesignRepository {
     };
   }
 
-  private handleFallback<T>(
-    err: unknown,
-    fallbackAction: () => Promise<T>,
-    operationName: string
-  ): Promise<T> {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    const isMissingTable =
-      errorMessage.includes("PGRST205") ||
-      errorMessage.includes("Could not find the table") ||
-      errorMessage.includes('relation "public.designs" does not exist');
-
-    if (isMissingTable && !this.hasLoggedMigrationHint) {
-      this.hasLoggedMigrationHint = true;
-      console.warn(
-        `[SupabaseDesignRepository] 'designs' table not found on Supabase during ${operationName}. ` +
-          `Falling back to local storage. Run 'packages/database/src/schema.sql' in your Supabase SQL Editor.`
-      );
+  /**
+   * Lists all designs belonging to the workspace.
+   * Scoped strictly by workspace_id and enforced by PostgreSQL RLS.
+   */
+  public async list(workspaceId?: string): Promise<DesignDocument[]> {
+    const targetWsId = workspaceId || this.workspaceId;
+    // Security check: Unscoped queries are strictly prevented
+    if (!targetWsId) {
+      return [];
     }
 
-    if (this.fallbackRepo) {
-      return fallbackAction();
-    }
-
-    throw err;
-  }
-
-  public async list(): Promise<DesignDocument[]> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.list();
+      if (this.fallbackRepo) return this.fallbackRepo.list(targetWsId);
       return [];
     }
 
@@ -65,58 +74,87 @@ export class SupabaseDesignRepository implements DesignRepository {
       const { data, error } = await client
         .from("designs")
         .select("*")
+        .eq("workspace_id", targetWsId)
         .order("updated_at", { ascending: false });
 
       if (error) {
-        return this.handleFallback(error, () => this.fallbackRepo!.list(), "list");
+        console.error("[SupabaseDesignRepository] Error listing designs:", error.message);
+        throw new Error(`Failed to list designs: ${error.message}`);
       }
 
       return (data || []).map((row) => this.mapRowToDocument(row as DesignTableRow));
     } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.list(), "list");
+      console.error("[SupabaseDesignRepository] Exception listing designs:", (err as Error)?.message);
+      throw err;
     }
   }
 
-  public async getById(id: string): Promise<DesignDocument | null> {
-    const client = getSupabaseClient(this.config);
+  /**
+   * Retrieves a single design by ID, verifying workspace membership.
+   */
+  public async getById(id: string, workspaceId?: string): Promise<DesignDocument | null> {
+    if (!id) return null;
+    const targetWsId = workspaceId || this.workspaceId;
+
+    const client = this.getClient();
     if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.getById(id);
+      if (this.fallbackRepo) return this.fallbackRepo.getById(id, targetWsId);
       return null;
     }
 
     try {
-      const { data, error } = await client.from("designs").select("*").eq("id", id).maybeSingle();
+      let query = client.from("designs").select("*").eq("id", id);
+      if (targetWsId) {
+        query = query.eq("workspace_id", targetWsId);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
-        return this.handleFallback(error, () => this.fallbackRepo!.getById(id), "getById");
+        console.error("[SupabaseDesignRepository] Error getting design:", error.message);
+        throw new Error(`Failed to get design: ${error.message}`);
       }
 
       if (!data) return null;
       return this.mapRowToDocument(data as DesignTableRow);
     } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.getById(id), "getById");
+      console.error("[SupabaseDesignRepository] Exception getting design:", (err as Error)?.message);
+      throw err;
     }
   }
 
+  /**
+   * Creates a new design inside the designated workspace.
+   */
   public async create(input: CreateDesignInput): Promise<DesignDocument> {
-    const client = getSupabaseClient(this.config);
+    const targetWsId = input.workspaceId || this.workspaceId;
+    if (!targetWsId) {
+      throw new Error("Cannot create design: workspaceId is required");
+    }
+
+    const client = this.getClient();
     if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.create(input);
+      if (this.fallbackRepo) return this.fallbackRepo.create({ ...input, workspaceId: targetWsId });
       throw new Error("Supabase is not configured and no fallback repository is available");
     }
 
     const defaultPage = {
       id: "page-1",
-      pageNumber: 1,
+      name: "Page 1",
       elements: [],
     };
 
+    const cleanPages = sanitizePages(
+      input.pages && input.pages.length > 0 ? input.pages : [defaultPage]
+    );
+
     const newRow = {
-      name: input.name,
-      width: input.width,
-      height: input.height,
-      background_color: input.backgroundColor || "#ffffff",
-      pages: input.pages && input.pages.length > 0 ? input.pages : [defaultPage],
+      workspace_id: targetWsId,
+      name: typeof input.name === "string" && input.name.trim().length > 0 ? input.name.trim() : "Untitled Design",
+      width: Number(input.width) || 1200,
+      height: Number(input.height) || 800,
+      background_color: typeof input.backgroundColor === "string" ? input.backgroundColor : "#ffffff",
+      pages: cleanPages,
       favorite: false,
     };
 
@@ -124,97 +162,125 @@ export class SupabaseDesignRepository implements DesignRepository {
       const { data, error } = await client.from("designs").insert([newRow]).select().single();
 
       if (error) {
-        return this.handleFallback(error, () => this.fallbackRepo!.create(input), "create");
+        console.error("[SupabaseDesignRepository] Error creating design:", error.message);
+        throw new Error(`Failed to create design: ${error.message}`);
       }
 
       return this.mapRowToDocument(data as DesignTableRow);
     } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.create(input), "create");
+      console.error("[SupabaseDesignRepository] Exception creating design:", (err as Error)?.message);
+      throw err;
     }
   }
 
-  public async update(id: string, updates: Partial<DesignDocument>): Promise<DesignDocument> {
-    const client = getSupabaseClient(this.config);
+  /**
+   * Updates an existing design within the designated workspace.
+   */
+  public async update(
+    id: string,
+    updates: Partial<DesignDocument>,
+    workspaceId?: string
+  ): Promise<DesignDocument> {
+    if (!id) throw new Error("Design ID is required for update");
+    const targetWsId = workspaceId || this.workspaceId;
+
+    const client = this.getClient();
     if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.update(id, updates);
+      if (this.fallbackRepo) return this.fallbackRepo.update(id, updates, targetWsId);
       throw new Error("Supabase is not configured and no fallback repository is available");
     }
 
     const rowUpdates: Record<string, unknown> = {};
-    if (updates.name !== undefined) rowUpdates.name = updates.name;
-    if (updates.width !== undefined) rowUpdates.width = updates.width;
-    if (updates.height !== undefined) rowUpdates.height = updates.height;
+    if (updates.name !== undefined) rowUpdates.name = String(updates.name);
+    if (updates.width !== undefined) rowUpdates.width = Number(updates.width) || 1200;
+    if (updates.height !== undefined) rowUpdates.height = Number(updates.height) || 800;
     if (updates.backgroundColor !== undefined)
-      rowUpdates.background_color = updates.backgroundColor;
-    if (updates.pages !== undefined) rowUpdates.pages = updates.pages;
-    if (updates.thumbnail !== undefined) rowUpdates.thumbnail = updates.thumbnail;
-    if (updates.favorite !== undefined) rowUpdates.favorite = updates.favorite;
-    if (updates.description !== undefined) rowUpdates.description = updates.description;
+      rowUpdates.background_color = String(updates.backgroundColor);
+    if (updates.pages !== undefined) rowUpdates.pages = sanitizePages(updates.pages);
+    if (updates.thumbnail !== undefined) {
+      rowUpdates.thumbnail =
+        typeof updates.thumbnail === "string" && updates.thumbnail.length > 0
+          ? updates.thumbnail
+          : null;
+    }
+    if (updates.favorite !== undefined) rowUpdates.favorite = Boolean(updates.favorite);
+    if (updates.description !== undefined)
+      rowUpdates.description = updates.description ? String(updates.description) : null;
     rowUpdates.updated_at = new Date().toISOString();
 
     try {
-      const { data, error } = await client
-        .from("designs")
-        .update(rowUpdates)
-        .eq("id", id)
-        .select()
-        .single();
+      let query = client.from("designs").update(rowUpdates).eq("id", id);
+      if (targetWsId) {
+        query = query.eq("workspace_id", targetWsId);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) {
-        return this.handleFallback(error, () => this.fallbackRepo!.update(id, updates), "update");
+        console.error("[SupabaseDesignRepository] Error updating design:", error.message);
+        throw new Error(`Failed to update design: ${error.message}`);
       }
 
       return this.mapRowToDocument(data as DesignTableRow);
     } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.update(id, updates), "update");
+      console.error("[SupabaseDesignRepository] Exception updating design:", (err as Error)?.message);
+      throw err;
     }
   }
 
-  public async delete(id: string): Promise<void> {
-    const client = getSupabaseClient(this.config);
+  /**
+   * Deletes a design from the designated workspace.
+   */
+  public async delete(id: string, workspaceId?: string): Promise<void> {
+    if (!id) throw new Error("Design ID is required for delete");
+    const targetWsId = workspaceId || this.workspaceId;
+
+    const client = this.getClient();
     if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.delete(id);
+      if (this.fallbackRepo) return this.fallbackRepo.delete(id, targetWsId);
       return;
     }
 
     try {
-      const { error } = await client.from("designs").delete().eq("id", id);
+      let query = client.from("designs").delete().eq("id", id);
+      if (targetWsId) {
+        query = query.eq("workspace_id", targetWsId);
+      }
+
+      const { error } = await query;
       if (error) {
-        return this.handleFallback(error, () => this.fallbackRepo!.delete(id), "delete");
+        console.error("[SupabaseDesignRepository] Error deleting design:", error.message);
+        throw new Error(`Failed to delete design: ${error.message}`);
       }
     } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.delete(id), "delete");
+      console.error("[SupabaseDesignRepository] Exception deleting design:", (err as Error)?.message);
+      throw err;
     }
   }
 
-  public async duplicate(id: string): Promise<DesignDocument> {
-    const client = getSupabaseClient(this.config);
-    if (!client) {
-      if (this.fallbackRepo) return this.fallbackRepo.duplicate(id);
-      throw new Error("Supabase is not configured and no fallback repository is available");
+  /**
+   * Duplicates an existing design into the target workspace.
+   */
+  public async duplicate(id: string, workspaceId?: string): Promise<DesignDocument> {
+    const targetWsId = workspaceId || this.workspaceId;
+    const original = await this.getById(id, targetWsId);
+    if (!original) {
+      throw new Error(`Design with ID ${id} not found to duplicate`);
     }
 
-    try {
-      const original = await this.getById(id);
-      if (!original) {
-        throw new Error(`Design with ID ${id} not found to duplicate`);
-      }
+    const duplicateInput: CreateDesignInput = {
+      workspaceId: targetWsId,
+      name: `${original.name} (Copy)`,
+      width: original.width,
+      height: original.height,
+      backgroundColor: original.backgroundColor,
+      pages: JSON.parse(JSON.stringify(original.pages)),
+    };
 
-      const duplicateInput: CreateDesignInput = {
-        name: `${original.name} (Copy)`,
-        width: original.width,
-        height: original.height,
-        backgroundColor: original.backgroundColor,
-        pages: JSON.parse(JSON.stringify(original.pages)),
-      };
-
-      const duplicated = await this.create(duplicateInput);
-      if (original.thumbnail) {
-        return await this.update(duplicated.id, { thumbnail: original.thumbnail });
-      }
-      return duplicated;
-    } catch (err) {
-      return this.handleFallback(err, () => this.fallbackRepo!.duplicate(id), "duplicate");
+    const duplicated = await this.create(duplicateInput);
+    if (original.thumbnail) {
+      return await this.update(duplicated.id, { thumbnail: original.thumbnail }, targetWsId);
     }
+    return duplicated;
   }
 }

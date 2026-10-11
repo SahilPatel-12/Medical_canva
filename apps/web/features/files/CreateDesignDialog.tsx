@@ -38,12 +38,20 @@ const PRESETS: DimensionPreset[] = [
     description: "Full HD presentation slide",
   },
   {
+    id: "slide_4_3",
+    name: "Standard Slide (4:3)",
+    width: 1280,
+    height: 960,
+    icon: <Monitor size={18} />,
+    description: "Classic presentation slide",
+  },
+  {
     id: "poster",
     name: "Bio/Medical Poster",
-    width: 1400,
-    height: 900,
+    width: 2400,
+    height: 1600,
     icon: <Sparkles size={18} />,
-    description: "Detailed scientific illustration",
+    description: "High-res scientific poster & banner",
   },
   {
     id: "square",
@@ -74,6 +82,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
   const [height, setHeight] = useState(800);
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSelectPreset = (preset: DimensionPreset) => {
     setSelectedPreset(preset.id);
@@ -87,6 +96,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
 
     try {
       setIsSubmitting(true);
+      setErrorMessage(null);
       await onSubmit({
         name: name.trim(),
         width: Number(width) || 1200,
@@ -94,6 +104,8 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
         backgroundColor,
       });
       onClose();
+    } catch (err) {
+      setErrorMessage((err as Error)?.message || "Failed to create design");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,6 +138,21 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
         onSubmit={handleSubmit}
         style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
       >
+        {errorMessage && (
+          <div
+            style={{
+              padding: "0.75rem 1rem",
+              borderRadius: "0.375rem",
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid #ef4444",
+              color: "#fca5a5",
+              fontSize: "0.875rem",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
         {/* Design Name */}
         <Input
           label="Design Title"

@@ -1,7 +1,10 @@
-export * from "./types";
-export * from "./client";
-export * from "./repository/SupabaseDesignRepository";
-export * from "./repository/SupabaseAssetRepository";
+export * from "./types.js";
+export * from "./client.js";
+export * from "./repository/SupabaseDesignRepository.js";
+export * from "./repository/SupabaseAssetRepository.js";
+export * from "./repository/SupabaseProfileRepository.js";
+export * from "./repository/SupabaseWorkspaceRepository.js";
+export * from "./repository/SupabaseShareRepository.js";
 
 /**
  * Database connection configuration placeholder

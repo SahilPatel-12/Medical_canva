@@ -11,10 +11,31 @@ export class SupabaseAssetRepository {
   }
 
   public mapRowToAsset(row: AssetTableRow): Asset {
+    let categorySlug = row.category_slug || undefined;
+    let subcategorySlug = row.subcategory_slug || undefined;
+    const subcategoryId = row.subcategory_id || undefined;
+    const subcategoryName = row.subcategory_name || undefined;
+
+    // Check tags for taxonomy tags if not explicitly present
+    if (Array.isArray(row.tags)) {
+      for (const tag of row.tags) {
+        if (!categorySlug && tag.startsWith("cat:")) {
+          categorySlug = tag.replace("cat:", "");
+        }
+        if (!subcategorySlug && tag.startsWith("subcat:")) {
+          subcategorySlug = tag.replace("subcat:", "");
+        }
+      }
+    }
+
     return {
       id: row.id,
       name: row.name,
       category: row.category,
+      categorySlug: categorySlug || (row.category ? row.category.toLowerCase().replace(/\s+/g, "-") : undefined),
+      subcategoryId,
+      subcategorySlug,
+      subcategoryName,
       type: (row.type as ElementType) || "svg",
       source: row.svg_content || row.public_url,
       url: row.public_url,
@@ -46,7 +67,11 @@ export class SupabaseAssetRepository {
     }
   }
 
-  public async list(options?: { category?: string; search?: string }): Promise<Asset[]> {
+  public async list(options?: {
+    category?: string;
+    subcategory?: string;
+    search?: string;
+  }): Promise<Asset[]> {
     const client = getSupabaseClient(this.config);
     if (!client) {
       return [];
@@ -56,7 +81,15 @@ export class SupabaseAssetRepository {
       let query = client.from("assets").select("*").order("created_at", { ascending: false });
 
       if (options?.category && options.category !== "all") {
-        query = query.eq("category", options.category);
+        query = query.or(
+          `category.eq.${options.category},category.ilike.%${options.category}%,tags.cs.{cat:${options.category}},tags.cs.{${options.category}}`
+        );
+      }
+
+      if (options?.subcategory && options.subcategory !== "all") {
+        query = query.or(
+          `tags.cs.{subcat:${options.subcategory}},tags.cs.{${options.subcategory}}`
+        );
       }
 
       if (options?.search && options.search.trim()) {
@@ -100,41 +133,61 @@ export class SupabaseAssetRepository {
       throw new Error("Supabase client is not configured");
     }
 
-    const { data, error } = await client
+    const payload: Record<string, unknown> = {
+      id: input.id || `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: input.name,
+      category: input.category || "science",
+      type: input.type || "svg",
+      r2_key: input.r2_key,
+      public_url: input.public_url,
+      content_type: input.content_type || "image/svg+xml",
+      size_bytes: input.size_bytes || 0,
+      width: input.width || 120,
+      height: input.height || 120,
+      tags: input.tags || [],
+      svg_content: input.svg_content || null,
+      thumbnail_url: input.thumbnail_url || null,
+    };
+
+    if (input.category_slug) payload.category_slug = input.category_slug;
+    if (input.subcategory_id) payload.subcategory_id = input.subcategory_id;
+    if (input.subcategory_slug) payload.subcategory_slug = input.subcategory_slug;
+    if (input.subcategory_name) payload.subcategory_name = input.subcategory_name;
+
+    let res = await client
       .from("assets")
-      .insert({
-        id: input.id || `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        name: input.name,
-        category: input.category || "science",
-        type: input.type || "svg",
-        r2_key: input.r2_key,
-        public_url: input.public_url,
-        content_type: input.content_type || "image/svg+xml",
-        size_bytes: input.size_bytes || 0,
-        width: input.width || 120,
-        height: input.height || 120,
-        tags: input.tags || [],
-        svg_content: input.svg_content || null,
-        thumbnail_url: input.thumbnail_url || null,
-      })
+      .insert(payload)
       .select()
       .single();
 
-    if (error) {
-      this.handleMissingTable(error, "create");
+    // Fallback if specific taxonomy columns don't exist yet on database table
+    if (res.error && (res.error.message.includes("column") || res.error.message.includes("does not exist"))) {
+      delete payload.category_slug;
+      delete payload.subcategory_id;
+      delete payload.subcategory_slug;
+      delete payload.subcategory_name;
+      res = await client
+        .from("assets")
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    if (res.error) {
+      this.handleMissingTable(res.error, "create");
       const isMissingTable =
-        error.message.includes("PGRST205") ||
-        error.message.includes("Could not find the table") ||
-        error.message.includes('relation "public.assets" does not exist');
+        res.error.message.includes("PGRST205") ||
+        res.error.message.includes("Could not find the table") ||
+        res.error.message.includes('relation "public.assets" does not exist');
       if (isMissingTable) {
         throw new Error(
           "Supabase table 'public.assets' has not been created yet. Please execute 'infrastructure/supabase/migrations/002_create_assets_table.sql' in your Supabase SQL Editor."
         );
       }
-      throw new Error(`Failed to create asset in Supabase: ${error.message}`);
+      throw new Error(`Failed to create asset in Supabase: ${res.error.message}`);
     }
 
-    return this.mapRowToAsset(data as AssetTableRow);
+    return this.mapRowToAsset(res.data as AssetTableRow);
   }
 
   public async update(id: string, updates: AssetTableUpdate): Promise<Asset> {

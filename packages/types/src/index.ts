@@ -116,6 +116,7 @@ export interface Page {
   id: string;
   name?: string;
   elements: DesignElement[];
+  thumbnail?: string;
 }
 
 export interface DesignDocument extends BaseEntity {
@@ -127,6 +128,7 @@ export interface DesignDocument extends BaseEntity {
   thumbnail?: string; // Data URL preview for instant rendering in My Files
   favorite?: boolean;
   description?: string;
+  workspaceId?: string; // Phase 3: Workspace ownership boundary
 }
 
 export interface CreateDesignInput {
@@ -135,15 +137,40 @@ export interface CreateDesignInput {
   height: number;
   backgroundColor?: string;
   pages?: Page[];
+  workspaceId?: string; // Phase 3: Target workspace for creation
 }
 
 export type AssetCategory = "science" | "shapes" | "icons" | "illustrations" | string;
+
+export interface AssetSubcategoryItem {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  displayOrder: number;
+  iconName?: string;
+}
+
+export interface AssetCategoryItem {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  displayOrder: number;
+  iconName?: string;
+  subcategories: AssetSubcategoryItem[];
+}
 
 export interface Asset {
   id: string;
   name: string;
   type: ElementType;
   category: AssetCategory;
+  categorySlug?: string;
+  subcategoryId?: string;
+  subcategorySlug?: string;
+  subcategoryName?: string;
   source: string; // SVG code, shape blueprint, or public URL
   url?: string;
   r2Key?: string;
@@ -152,20 +179,156 @@ export interface Asset {
   thumbnail?: string;
   defaultWidth?: number;
   defaultHeight?: number;
+  viewBox?: string;
   tags?: string[];
+  description?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 /**
  * Design Repository Interface
- * Allows clean substitution between LocalStorage, Memory, and Future REST/GraphQL API
+ * Scoped by workspace ownership boundary (Phase 3)
  */
 export interface DesignRepository {
-  list(): Promise<DesignDocument[]>;
-  getById(id: string): Promise<DesignDocument | null>;
+  list(workspaceId?: string): Promise<DesignDocument[]>;
+  getById(id: string, workspaceId?: string): Promise<DesignDocument | null>;
   create(input: CreateDesignInput): Promise<DesignDocument>;
-  update(id: string, updates: Partial<DesignDocument>): Promise<DesignDocument>;
-  delete(id: string): Promise<void>;
-  duplicate(id: string): Promise<DesignDocument>;
+  update(id: string, updates: Partial<DesignDocument>, workspaceId?: string): Promise<DesignDocument>;
+  delete(id: string, workspaceId?: string): Promise<void>;
+  duplicate(id: string, workspaceId?: string): Promise<DesignDocument>;
 }
+
+/**
+ * Application User Profile (maps to public.profiles)
+ * Linked 1:1 with auth.users.id
+ */
+export interface UserProfile {
+  id: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Workspace Type enum
+ */
+export type WorkspaceType = "personal" | "team";
+
+/**
+ * Workspace Membership Role enum
+ */
+export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
+
+/**
+ * Workspace Entity (maps to public.workspaces)
+ */
+export interface Workspace {
+  id: string;
+  name: string;
+  slug?: string | null;
+  type: WorkspaceType;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Workspace Member Entity (maps to public.workspace_members)
+ */
+export interface WorkspaceMember {
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceRole;
+  createdAt: string;
+  updatedAt: string;
+  user?: UserProfile;
+}
+
+/**
+ * Workspace composite object with caller's role
+ */
+export interface WorkspaceWithRole extends Workspace {
+  role: WorkspaceRole;
+}
+
+/**
+ * Workspace Invitation Status
+ */
+export type InvitationStatus = "pending" | "accepted" | "revoked" | "expired";
+
+/**
+ * Workspace Invitation Entity (maps to public.workspace_invitations)
+ */
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: "admin" | "editor" | "viewer";
+  invitedBy: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  workspaceName?: string;
+  token?: string; // Only present immediately upon creation for sharing
+}
+
+export interface CreateInvitationInput {
+  workspaceId: string;
+  email: string;
+  role: "admin" | "editor" | "viewer";
+}
+
+export interface InvitationDetails {
+  id: string;
+  workspaceId: string;
+  workspaceName: string;
+  email: string;
+  role: "admin" | "editor" | "viewer";
+  status: InvitationStatus;
+  expiresAt: string;
+}
+
+// ==========================================
+// Design Link Sharing & Real-time Collaboration (Phase 4)
+// ==========================================
+
+export type SharePermission = "view" | "edit";
+
+export interface DesignShareLink {
+  id: string;
+  designId: string;
+  token: string;
+  permission: SharePermission;
+  isEnabled: boolean;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SharedDesignDetails {
+  design: DesignDocument;
+  permission: SharePermission;
+  shareId: string;
+}
+
+export interface UpdateShareLinkInput {
+  designId: string;
+  isEnabled: boolean;
+  permission: SharePermission;
+  regenerateToken?: boolean;
+}
+
+export interface CollaboratorInfo {
+  clientId: string;
+  userId?: string | null;
+  name: string;
+  avatarUrl?: string | null;
+  color: string;
+  selectedElementId?: string | null;
+  isEditing?: boolean;
+  lastActive: number;
+}
+export * from "./sanitize.js";

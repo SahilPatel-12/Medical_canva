@@ -13,6 +13,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts",
     "lint": "eslint src",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
@@ -27,11 +28,14 @@
   },
   "devDependencies": {
     "@design-platform/config": "workspace:*",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
+
 }
