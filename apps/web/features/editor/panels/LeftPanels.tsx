@@ -248,6 +248,10 @@ const textTemplate = (preset: TextPreset): ElementTemplate => ({
   } as TextProperties,
 });
 
+/** Plain text box (the "Add a text box" button and the T shortcut) */
+export const textBoxTemplate = (): ElementTemplate =>
+  textTemplate({ id: "box", label: "Text", hint: "Text", text: "Your text", width: 360, props: { fontSize: 24 } });
+
 export interface TextPanelProps {
   onInsert: (template: ElementTemplate, startEditing?: boolean) => void;
   onCollapse: () => void;
@@ -270,10 +274,7 @@ export const TextPanel: React.FC<TextPanelProps> = ({ onInsert, onCollapse }) =>
           type="button"
           className="ui-button ui-button--primary lp-wide-button"
           onClick={() =>
-            onInsert(
-              textTemplate({ id: "box", label: "Text", hint: "Text", text: "Your text", width: 360, props: { fontSize: 24 } }),
-              true
-            )
+            onInsert(textBoxTemplate(), true)
           }
         >
           <TextIcon size={18} />

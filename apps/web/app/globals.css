@@ -2206,3 +2206,179 @@ body {
     animation: none;
   }
 }
+
+/* ==========================================
+   Keyboard shortcuts sheet
+   ========================================== */
+.ks-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(15, 23, 42, 0.45);
+  animation: ks-fade 120ms ease-out;
+}
+@keyframes ks-fade {
+  from {
+    opacity: 0;
+  }
+}
+.ks-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: min(680px, 100%);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--surface, #ffffff);
+  color: var(--foreground, #0f172a);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+.ks-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+.ks-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--primary-subtle, #ecfdf5);
+  color: var(--primary, #047857);
+}
+.ks-head-text {
+  flex: 1;
+  min-width: 0;
+}
+.ks-head-text h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ks-head-text p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--foreground-muted, #64748b);
+}
+.ks-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground-muted, #64748b);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ks-close:hover {
+  background: var(--surface-hover, #f1f5f9);
+  color: var(--foreground, #0f172a);
+}
+.ks-search {
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--border-subtle, #edf2f7);
+}
+.ks-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 9px;
+  background: var(--input-bg, #ffffff);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.ks-search input:focus {
+  border-color: var(--border-focus, #047857);
+  box-shadow: 0 0 0 3px var(--primary-glow, rgba(4, 120, 87, 0.15));
+}
+.ks-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 28px;
+  padding: 14px 20px 20px;
+  overflow-y: auto;
+  align-items: start;
+}
+.ks-group h3 {
+  margin: 6px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary, #047857);
+}
+.ks-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ks-group li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  border-bottom: 1px solid var(--border-subtle, #edf2f7);
+  font-size: 13px;
+}
+.ks-group li:last-child {
+  border-bottom: none;
+}
+.ks-label {
+  color: var(--foreground-secondary, #334155);
+}
+.ks-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ks-combo {
+  display: inline-flex;
+  gap: 3px;
+}
+.ks-key {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border, #e2e8f0);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface-muted, #f8fafc);
+  color: var(--foreground, #0f172a);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.ks-or,
+.ks-gesture {
+  font-size: 12px;
+  color: var(--foreground-muted, #64748b);
+}
+.ks-empty {
+  grid-column: 1 / -1;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--foreground-muted, #64748b);
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .ks-body {
+    grid-template-columns: 1fr;
+  }
+}

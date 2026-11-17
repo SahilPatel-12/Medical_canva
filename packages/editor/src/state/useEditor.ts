@@ -321,6 +321,9 @@ export function useEditor({ initialDocument, repository, isReadOnly = false }: U
       },
       onActivatePage: (pageIndex) => activatePage(pageIndex),
       onElementAutoSize: (id, updates) => storeRef.current.updateElement(id, updates, true),
+      onElementDelete: (id) => {
+        if (!isReadOnly) storeRef.current.deleteElement(id);
+      },
       onElementsChange: (batch) => {
         if (!isReadOnly) storeRef.current.updateElements(batch);
       },
@@ -432,6 +435,21 @@ export function useEditor({ initialDocument, repository, isReadOnly = false }: U
           storeRef.current.flipSelection(axis);
           return;
         }
+      }
+
+      // Layer order: Cmd/Ctrl + ] forward, + [ backward; with Alt: to front / to back
+      if (isCmdOrCtrl && (e.code === "BracketRight" || e.code === "BracketLeft")) {
+        const store = storeRef.current;
+        const selected = store.getSelectedElement();
+        if (!selected || store.getSelectedIds().length !== 1 || store.getLayerNav()?.selectedPath) return;
+        e.preventDefault();
+        const up = e.code === "BracketRight";
+        if (e.altKey) {
+          if (up) store.bringToFront(selected.id);
+          else store.sendToBack(selected.id);
+        } else if (up) store.bringForward(selected.id);
+        else store.sendBackward(selected.id);
+        return;
       }
 
       // Duplicate: Cmd/Ctrl + D

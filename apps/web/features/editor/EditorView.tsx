@@ -15,6 +15,8 @@ import { EditorCanvasViewport } from "./EditorCanvasViewport";
 import { EditorContextToolbar } from "./EditorContextToolbar";
 import { MultiSelectionActions, MultiSelectionToolbar } from "./inspector/MultiSelection";
 import { EditorContextMenu, buildCanvasMenu } from "./EditorContextMenu";
+import { KeyboardShortcutsDialog, useEditorShortcuts } from "./KeyboardShortcuts";
+import type { ElementTemplate } from "./panels/elementTemplates";
 import { Button } from "@design-platform/ui";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@design-platform/auth";
@@ -174,6 +176,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
   const { user } = useAuth();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isGridViewOpen, setIsGridViewOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>("assets");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
@@ -324,6 +327,20 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
       })
     : null;
 
+  /** Adds an element at the page center; repeated adds step down-right so none hide each other */
+  const insertFromTemplate = (template: ElementTemplate, startEditing?: boolean) => {
+    const doc = state.document;
+    let x = Math.round(doc.width / 2 - template.width / 2);
+    let y = Math.round(doc.height / 2 - template.height / 2);
+    const taken = new Set(pageElements.map((el) => `${el.x},${el.y}`));
+    for (let i = 0; i < 40 && taken.has(`${x},${y}`); i++) {
+      x += 24;
+      y += 24;
+    }
+    const created = insertElement({ ...template, x, y });
+    if (startEditing && created.type === "text") editText(created.id);
+  };
+
   const handleExportPng = () => {
     const dataUrl = exportImage(2.0);
     if (!dataUrl) {
@@ -361,6 +378,13 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
   });
 
   const effectiveReadOnly = isReadOnly || !hasEditPermission;
+
+  // One-key inserts (T, R, C, L, A) and "?" for the shortcuts sheet
+  useEditorShortcuts({
+    enabled: !effectiveReadOnly && !isShortcutsOpen,
+    onInsert: insertFromTemplate,
+    onOpenHelp: () => setIsShortcutsOpen(true),
+  });
 
   // Automatically reveal properties panel when an element or subcomponent is selected
   useEffect(() => {
@@ -414,6 +438,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
 
       {/* Top Bar */}
       <EditorTopBar
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
         name={state.document.name}
         onRename={renameDocument}
         saveStatus={state.saveStatus}
@@ -448,10 +473,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
           onAddAsset={addAssetToCenter}
           onAddShape={addShape}
           onAddText={addText}
-          onInsertElement={(template, startEditing) => {
-            const created = insertElement(template);
-            if (startEditing && created.type === "text") editText(created.id);
-          }}
+          onInsertElement={insertFromTemplate}
           onMoveElement={moveElementTo}
           selectedIds={selectedIds}
           onToggleSelect={toggleInSelection}
@@ -564,6 +586,8 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
         onReorderPages={reorderPages}
         isReadOnly={effectiveReadOnly}
       />
+
+      <KeyboardShortcutsDialog open={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
 
       {contextMenu && canvasMenu && !effectiveReadOnly && (
         <EditorContextMenu

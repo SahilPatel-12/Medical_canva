@@ -43,6 +43,8 @@ export interface EditorTopBarProps {
   onSave: () => void;
   isReadOnly?: boolean;
   onShareClick?: () => void;
+  /** Opens the keyboard shortcuts sheet */
+  onOpenShortcuts?: () => void;
   onExportPng?: () => void;
   onExportJson?: () => void;
   collaborators?: CollaboratorInfo[];
@@ -72,32 +74,15 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   collaborators = [],
   connectionStatus,
   canManageShare = true,
+  onOpenShortcuts,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [titleValue, setTitleValue] = useState(name);
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   useEffect(() => {
     setTitleValue(name);
   }, [name]);
 
-  // Global listener for '?' or 'Cmd+/' to open shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        (e.key === "?" || (e.key === "/" && (e.metaKey || e.ctrlKey))) &&
-        !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)
-      ) {
-        e.preventDefault();
-        setIsShortcutsOpen((prev) => !prev);
-      }
-      if (e.key === "Escape" && isShortcutsOpen) {
-        setIsShortcutsOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isShortcutsOpen]);
 
   const handleNameBlur = () => {
     setIsEditingName(false);
@@ -471,37 +456,40 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           {/* Light / Dark Mode Toggle */}
           <ThemeToggle size="sm" />
 
-          {/* Shortcuts Info Helper Button */}
-          <button
-            type="button"
-            onClick={() => setIsShortcutsOpen(true)}
-            title="Keyboard Shortcuts (? or Cmd+/)"
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              backgroundColor: "var(--surface, #ffffff)",
-              border: "1px solid var(--border, #e2e8f0)",
-              color: "var(--foreground-muted, #64748b)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
-              e.currentTarget.style.color = "var(--foreground, #0f172a)";
-              e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
-              e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
-              e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
-            }}
-          >
-            <HelpCircle size={15} />
-          </button>
+          {/* Keyboard shortcuts sheet */}
+          {onOpenShortcuts && (
+            <button
+              type="button"
+              onClick={onOpenShortcuts}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                backgroundColor: "var(--surface, #ffffff)",
+                border: "1px solid var(--border, #e2e8f0)",
+                color: "var(--foreground-muted, #64748b)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
+                e.currentTarget.style.color = "var(--foreground, #0f172a)";
+                e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+                e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
+                e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
+              }}
+            >
+              <HelpCircle size={15} />
+            </button>
+          )}
 
           {/* Connection Status Indicator */}
           {connectionStatus && (
@@ -651,161 +639,6 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
         </div>
       </header>
 
-      {/* ========================================================= */}
-      {/* KEYBOARD SHORTCUTS CHEAT SHEET MODAL (Light Themed)       */}
-      {/* ========================================================= */}
-      {isShortcutsOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.55)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-          }}
-          onClick={() => setIsShortcutsOpen(false)}
-        >
-          <div
-            style={{
-              width: "520px",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              backgroundColor: "var(--surface, #ffffff)",
-              border: "1px solid var(--border, #e2e8f0)",
-              borderRadius: "14px",
-              boxShadow: "var(--shadow-float, 0 20px 48px rgba(0, 0, 0, 0.25))",
-              padding: "1.5rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.25rem",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                borderBottom: "1px solid var(--border, #e2e8f0)",
-                paddingBottom: "1rem",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Keyboard size={20} style={{ color: "var(--primary, #047857)" }} />
-                <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "var(--foreground, #0f172a)", margin: 0 }}>
-                  Keyboard Shortcuts
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsShortcutsOpen(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  padding: "4px",
-                  borderRadius: "6px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Shortcuts Sections */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {/* General & Navigation */}
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    color: "#64748b",
-                  }}
-                >
-                  General & Navigation
-                </span>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-                  <ShortcutRow label="Undo action" keys={["Ctrl/Cmd", "Z"]} />
-                  <ShortcutRow label="Redo action" keys={["Ctrl/Cmd", "Shift", "Z"]} />
-                  <ShortcutRow label="Focus Asset Search" keys={["/"]} />
-                  <ShortcutRow label="Open shortcuts helper" keys={["?"]} />
-                  <ShortcutRow label="Hold Space to Pan Canvas" keys={["Space", "Drag"]} />
-                  <ShortcutRow label="Zoom in / out" keys={["Ctrl/Cmd", "+", "/ -"]} />
-                  <ShortcutRow label="Fit to Screen" keys={["Ctrl/Cmd", "0"]} />
-                </div>
-              </div>
-
-              {/* Elements & Editing */}
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    color: "#64748b",
-                  }}
-                >
-                  Element Editing
-                </span>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-                  <ShortcutRow label="Duplicate selected element" keys={["Ctrl/Cmd", "D"]} />
-                  <ShortcutRow label="Delete selected element" keys={["Backspace", "/ Delete"]} />
-                  <ShortcutRow label="Bring Forward" keys={["]"]} />
-                  <ShortcutRow label="Send Backward" keys={["["]} />
-                  <ShortcutRow label="Bring to Front" keys={["Ctrl/Cmd", "]"]} />
-                  <ShortcutRow label="Send to Back" keys={["Ctrl/Cmd", "["]} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
-
-const ShortcutRow: React.FC<{ label: string; keys: string[] }> = ({ label, keys }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "6px 10px",
-      borderRadius: "6px",
-      backgroundColor: "var(--surface-muted, #f8fafc)",
-      border: "1px solid var(--border, #e2e8f0)",
-    }}
-  >
-    <span style={{ fontSize: "0.8125rem", color: "var(--foreground-secondary, #334155)" }}>{label}</span>
-    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-      {keys.map((k, i) => (
-        <kbd
-          key={i}
-          style={{
-            fontSize: "0.6875rem",
-            fontWeight: 600,
-            padding: "2px 6px",
-            borderRadius: "4px",
-            backgroundColor: "var(--surface, #ffffff)",
-            border: "1px solid var(--border-strong, #cbd5e1)",
-            color: "var(--foreground, #0f172a)",
-            boxShadow: "var(--shadow-xs, 0 1px 1px rgba(0,0,0,0.05))",
-          }}
-        >
-          {k}
-        </kbd>
-      ))}
-    </div>
-  </div>
-);

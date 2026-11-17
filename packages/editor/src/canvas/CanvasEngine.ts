@@ -75,6 +75,8 @@ export interface CanvasEngineCallbacks {
    * canvas); `client` is the viewport position for placing the menu.
    */
   onContextMenu?: (info: CanvasContextMenuInfo) => void;
+  /** A text box was emptied while typing: the element should be removed */
+  onElementDelete?: (elementId: string) => void;
   /** Size the canvas measured itself (auto-height text); applied without an undo step */
   onElementAutoSize?: (elementId: string, updates: Partial<DesignElement>) => void;
   isReadOnly?: boolean;
@@ -2022,6 +2024,8 @@ export class CanvasEngine {
 
     const props = el.properties as TextProperties;
     const textarea = document.createElement("textarea");
+    // One row by default: the box grows with the text instead of starting two lines tall
+    textarea.rows = 1;
     textarea.value = props.text || "";
     textarea.setAttribute("aria-label", "Edit text");
     textarea.spellcheck = true;
@@ -2086,11 +2090,13 @@ export class CanvasEngine {
       textAlign: props.align || "left",
       transform: `rotate(${el.rotation || 0}deg)`,
     } as Partial<CSSStyleDeclaration>);
-    ta.style.height = "auto";
-    ta.style.height = `${Math.max(ta.scrollHeight, (props.fontSize || 24) * lineHeight * scale)}px`;
+    // Measure the content height (collapse first so scrollHeight is the text, not the old box)
+    ta.style.height = "0px";
+    const oneLine = Math.ceil((props.fontSize || 24) * lineHeight * scale);
+    ta.style.height = `${Math.max(ta.scrollHeight, oneLine)}px`;
   }
 
-  /** Closes the text editor, saving the text (empty text keeps the previous text) */
+  /** Closes the text editor, saving the text. Emptied text boxes are removed (like Canva). */
   public finishTextEdit(save: boolean): void {
     const editor = this.textEditor;
     if (!editor) return;
@@ -2103,7 +2109,15 @@ export class CanvasEngine {
     this.transformer?.visible(true);
     this.layer?.batchDraw();
     const el = this.findElement(id);
-    if (save && el && value !== original && value.trim().length > 0) {
+    if (!save || !el) return;
+    if (value.trim().length === 0) {
+      if (this.callbacks.onElementDelete) {
+        this.deselect();
+        this.callbacks.onElementDelete(id);
+      }
+      return;
+    }
+    if (value !== original) {
       this.callbacks.onElementChange(id, { properties: { ...(el.properties as TextProperties), text: value } });
     }
   }

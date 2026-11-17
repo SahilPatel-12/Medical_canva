@@ -428,3 +428,12 @@ export const SelectAllIcon = make(
 );
 
 export const ChevronRightIcon = make("ChevronRightIcon", <path d="M9.5 6l6 6-6 6" />);
+
+export const KeyboardIcon = make(
+  "KeyboardIcon",
+  <>
+    <rect className={T} x="2.5" y="6" width="19" height="12" rx="2.5" />
+    <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
+    <path d="M6 9.5h.01M9.3 9.5h.01M12.6 9.5h.01M15.9 9.5h.01M18 9.5h.01M7.5 12.2h.01M10.8 12.2h.01M14 12.2h.01M17 12.2h.01M8 14.9h8" strokeWidth="2" />
+  </>
+);
