@@ -31,7 +31,7 @@ export function EditorClient({ designId }: { designId: string }) {
             width: "32px",
             height: "32px",
             border: "3px solid #27272a",
-            borderTopColor: "#3b82f6",
+            borderTopColor: "#10b981",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
           }}

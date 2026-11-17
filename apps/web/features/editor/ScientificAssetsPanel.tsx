@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { CategoryThumbnail, getCategoryTheme } from "./categoryThumbnails";
 import { formatAssetName } from "./EditorLeftPanel";
+import { AssetHoverPreview, AssetPreviewTarget } from "./AssetHoverPreview";
 
 export type AssetNavLevel = "root" | "category" | "subcategory" | "search" | "favorites" | "all";
 
@@ -52,6 +53,36 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
 }) => {
   const isDraggingRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const panelRootRef = useRef<HTMLDivElement>(null);
+
+  // Hover preview card beside the panel
+  const [previewTarget, setPreviewTarget] = useState<AssetPreviewTarget | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPreviewTimer = () => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = null;
+  };
+  const hidePreview = () => {
+    clearPreviewTimer();
+    setPreviewTarget(null);
+  };
+  const schedulePreview = (asset: Asset, tile: HTMLElement) => {
+    clearPreviewTimer();
+    const show = () => {
+      if (isDraggingRef.current || !tile.isConnected) return;
+      const r = tile.getBoundingClientRect();
+      const panel = panelRootRef.current?.getBoundingClientRect();
+      setPreviewTarget({ asset, anchor: { top: r.top, bottom: r.bottom }, panelRight: panel ? panel.right : r.right });
+    };
+    // Once a preview is open, moving to the next tile switches right away
+    if (previewTarget) show();
+    else previewTimerRef.current = setTimeout(show, 300);
+  };
+  const leavePreview = () => {
+    clearPreviewTimer();
+    previewTimerRef.current = setTimeout(() => setPreviewTarget(null), 120);
+  };
+  useEffect(() => () => clearPreviewTimer(), []);
 
   // Navigation State
   const [navLevel, setNavLevel] = useState<AssetNavLevel>(initialNavLevel);
@@ -368,6 +399,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
         draggable
         onDragStart={(e) => {
           isDraggingRef.current = true;
+          hidePreview();
           e.dataTransfer.setData("application/json", JSON.stringify(asset));
           e.dataTransfer.effectAllowed = "copy";
         }}
@@ -378,12 +410,14 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
         }}
         onClick={() => {
           if (isDraggingRef.current) return;
+          hidePreview();
           handleAssetInsert(asset);
         }}
-        title={`Click to insert "${formattedTitle}" into canvas (or drag & drop)`}
+        data-asset-tile={asset.id}
+        aria-label={`Insert ${formattedTitle}`}
         style={{
-          backgroundColor: isJustAdded ? "#eff6ff" : "#ffffff",
-          border: `1px solid ${isJustAdded ? "#2563eb" : "#e2e8f0"}`,
+          backgroundColor: isJustAdded ? "var(--primary-subtle, #ecfdf5)" : "var(--surface, #ffffff)",
+          border: `1px solid ${isJustAdded ? "var(--primary, #047857)" : "var(--border, #e2e8f0)"}`,
           borderRadius: "10px",
           padding: "0.625rem 0.5rem 0.5rem",
           display: "flex",
@@ -395,18 +429,20 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
           userSelect: "none",
           position: "relative",
           boxShadow: isJustAdded
-            ? "0 0 0 2px rgba(37, 99, 235, 0.2)"
+            ? "0 0 0 2px rgba(4, 120, 87, 0.2)"
             : "0 1px 2px rgba(0,0,0,0.03)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "#2563eb";
+          schedulePreview(asset, e.currentTarget);
+          e.currentTarget.style.borderColor = "var(--primary, #047857)";
           e.currentTarget.style.transform = "translateY(-2px)";
           e.currentTarget.style.boxShadow =
-            "0 6px 14px -2px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(0,0,0,0.04)";
+            "0 6px 14px -2px rgba(4, 120, 87, 0.1), 0 2px 4px -1px rgba(0,0,0,0.04)";
         }}
         onMouseLeave={(e) => {
+          leavePreview();
           if (!isJustAdded) {
-            e.currentTarget.style.borderColor = "#e2e8f0";
+            e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
             e.currentTarget.style.transform = "translateY(0)";
             e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)";
           }
@@ -424,8 +460,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
             width: "22px",
             height: "22px",
             borderRadius: "5px",
-            backgroundColor: isFav ? "#fef3c7" : "rgba(255, 255, 255, 0.9)",
-            border: `1px solid ${isFav ? "#fde68a" : "#e2e8f0"}`,
+            backgroundColor: isFav ? "var(--warning-subtle, #fef3c7)" : "var(--surface, rgba(255, 255, 255, 0.9))",
+            border: `1px solid ${isFav ? "var(--warning, #fde68a)" : "var(--border, #e2e8f0)"}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -449,12 +485,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
             width: "22px",
             height: "22px",
             borderRadius: "5px",
-            backgroundColor: isJustAdded ? "#2563eb" : "rgba(255, 255, 255, 0.9)",
-            border: `1px solid ${isJustAdded ? "#2563eb" : "#e2e8f0"}`,
+            backgroundColor: isJustAdded ? "var(--primary, #047857)" : "var(--surface, rgba(255, 255, 255, 0.9))",
+            border: `1px solid ${isJustAdded ? "var(--primary, #047857)" : "var(--border, #e2e8f0)"}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: isJustAdded ? "#ffffff" : "#64748b",
+            color: isJustAdded ? "#ffffff" : "var(--foreground-muted, #64748b)",
             transition: "all 0.15s ease",
             boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
             zIndex: 2,
@@ -520,7 +556,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
         <span
           style={{
             fontSize: "11px",
-            color: "#1e293b",
+            color: "var(--foreground, #1e293b)",
             textAlign: "center",
             fontWeight: 500,
             overflow: "hidden",
@@ -539,6 +575,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
 
   return (
     <div
+      ref={panelRootRef}
+      onWheel={previewTarget ? hidePreview : undefined}
       style={{
         padding: "1rem 1.125rem 5rem 1.125rem",
         display: "flex",
@@ -562,20 +600,20 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
             style={{
               fontSize: "0.9375rem",
               fontWeight: 700,
-              color: "#0f172a",
+              color: "var(--foreground, #0f172a)",
               margin: 0,
               display: "flex",
               alignItems: "center",
               gap: "7px",
             }}
           >
-            <LibraryBig size={17} style={{ color: "#2563eb" }} />
+            <LibraryBig size={17} style={{ color: "var(--primary, #047857)" }} />
             Scientific Assets
           </h2>
           <p
             style={{
               fontSize: "0.75rem",
-              color: "#64748b",
+              color: "var(--foreground-muted, #64748b)",
               marginTop: "2px",
               margin: 0,
             }}
@@ -593,9 +631,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               width: "28px",
               height: "28px",
               borderRadius: "6px",
-              border: "1px solid #e2e8f0",
+              border: "1px solid var(--border, #e2e8f0)",
               backgroundColor: "transparent",
-              color: "#64748b",
+              color: "var(--foreground-muted, #64748b)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -603,12 +641,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f5f9";
-              e.currentTarget.style.color = "#0f172a";
+              e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
+              e.currentTarget.style.color = "var(--foreground, #0f172a)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
             }}
           >
             <ChevronLeft size={16} />
@@ -628,7 +666,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 position: "absolute",
                 left: "0.75rem",
-                color: "#94a3b8",
+                color: "var(--foreground-muted, #94a3b8)",
                 pointerEvents: "none",
               }}
             />
@@ -641,24 +679,24 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 width: "100%",
                 height: "38px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
+                border: "1px solid var(--border, #e2e8f0)",
                 borderRadius: "8px",
                 padding: "0 2rem 0 2.25rem",
                 fontSize: "0.8125rem",
-                color: "#0f172a",
+                color: "var(--foreground, #0f172a)",
                 outline: "none",
                 fontFamily: "inherit",
                 transition: "all 0.15s ease",
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = "#2563eb";
-                e.target.style.backgroundColor = "#ffffff";
-                e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.1)";
+                e.target.style.borderColor = "var(--primary, #047857)";
+                e.target.style.backgroundColor = "var(--surface, #ffffff)";
+                e.target.style.boxShadow = "0 0 0 3px rgba(4, 120, 87, 0.1)";
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = "#e2e8f0";
-                e.target.style.backgroundColor = "#f8fafc";
+                e.target.style.borderColor = "var(--border, #e2e8f0)";
+                e.target.style.backgroundColor = "var(--surface-muted, #f8fafc)";
                 e.target.style.boxShadow = "none";
               }}
             />
@@ -675,15 +713,15 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   right: "0.625rem",
                   background: "none",
                   border: "none",
-                  color: "#94a3b8",
+                  color: "var(--foreground-muted, #94a3b8)",
                   cursor: "pointer",
                   padding: "2px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#0f172a")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground, #0f172a)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--foreground-muted, #94a3b8)")}
               >
                 <X size={14} />
               </button>
@@ -699,9 +737,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flex: 1,
                 padding: "6px 8px",
                 borderRadius: "6px",
-                border: `1px solid ${navLevel === "root" ? "#2563eb" : "#e2e8f0"}`,
-                backgroundColor: navLevel === "root" ? "#eff6ff" : "#ffffff",
-                color: navLevel === "root" ? "#1d4ed8" : "#64748b",
+                border: `1px solid ${navLevel === "root" ? "var(--primary, #047857)" : "var(--border, #e2e8f0)"}`,
+                backgroundColor: navLevel === "root" ? "var(--primary-subtle, #ecfdf5)" : "var(--surface, #ffffff)",
+                color: navLevel === "root" ? "var(--primary, #065f46)" : "var(--foreground-muted, #64748b)",
                 fontSize: "11px",
                 fontWeight: navLevel === "root" ? 600 : 500,
                 cursor: "pointer",
@@ -716,7 +754,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               <span
                 style={{
                   fontSize: "10px",
-                  backgroundColor: navLevel === "root" ? "#dbeafe" : "#f1f5f9",
+                  backgroundColor: navLevel === "root" ? "rgba(4, 120, 87, 0.15)" : "var(--surface-muted, #f1f5f9)",
+                  color: "inherit",
                   padding: "1px 5px",
                   borderRadius: "10px",
                 }}
@@ -732,9 +771,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flex: 1,
                 padding: "6px 8px",
                 borderRadius: "6px",
-                border: `1px solid ${navLevel === "favorites" ? "#d97706" : "#e2e8f0"}`,
-                backgroundColor: navLevel === "favorites" ? "#fffbeb" : "#ffffff",
-                color: navLevel === "favorites" ? "#b45309" : "#64748b",
+                border: `1px solid ${navLevel === "favorites" ? "var(--warning, #d97706)" : "var(--border, #e2e8f0)"}`,
+                backgroundColor: navLevel === "favorites" ? "var(--warning-subtle, #fffbeb)" : "var(--surface, #ffffff)",
+                color: navLevel === "favorites" ? "var(--warning, #b45309)" : "var(--foreground-muted, #64748b)",
                 fontSize: "11px",
                 fontWeight: navLevel === "favorites" ? 600 : 500,
                 cursor: "pointer",
@@ -745,12 +784,13 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 transition: "all 0.15s ease",
               }}
             >
-              <Star size={11} fill={favorites.size > 0 ? "#f59e0b" : "none"} color="#d97706" />
+              <Star size={11} fill={favorites.size > 0 ? "#f59e0b" : "none"} color="var(--warning, #d97706)" />
               <span>Favorites</span>
               <span
                 style={{
                   fontSize: "10px",
-                  backgroundColor: navLevel === "favorites" ? "#fef3c7" : "#f1f5f9",
+                  backgroundColor: navLevel === "favorites" ? "rgba(245, 158, 11, 0.2)" : "var(--surface-muted, #f1f5f9)",
+                  color: "inherit",
                   padding: "1px 5px",
                   borderRadius: "10px",
                 }}
@@ -766,9 +806,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flex: 1,
                 padding: "6px 8px",
                 borderRadius: "6px",
-                border: `1px solid ${navLevel === "all" ? "#2563eb" : "#e2e8f0"}`,
-                backgroundColor: navLevel === "all" ? "#eff6ff" : "#ffffff",
-                color: navLevel === "all" ? "#1d4ed8" : "#64748b",
+                border: `1px solid ${navLevel === "all" ? "var(--primary, #047857)" : "var(--border, #e2e8f0)"}`,
+                backgroundColor: navLevel === "all" ? "var(--primary-subtle, #ecfdf5)" : "var(--surface, #ffffff)",
+                color: navLevel === "all" ? "var(--primary, #065f46)" : "var(--foreground-muted, #64748b)",
                 fontSize: "11px",
                 fontWeight: navLevel === "all" ? 600 : 500,
                 cursor: "pointer",
@@ -848,12 +888,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
-                color: "#64748b",
+                color: "var(--foreground-muted, #64748b)",
               }}
             >
               Browse categories
             </span>
-            <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>
+            <span style={{ fontSize: "11px", color: "var(--foreground-muted, #94a3b8)", fontWeight: 500 }}>
               15 categories
             </span>
           </div>
@@ -889,22 +929,22 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "12px 14px",
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #f1f5f9",
+                    backgroundColor: "var(--surface, #ffffff)",
+                    border: "1px solid var(--border, #f1f5f9)",
                     borderRadius: "10px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
                     boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.backgroundColor = "var(--surface-hover, #f8fafc)";
+                    e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
                     e.currentTarget.style.boxShadow =
                       "0 3px 8px -1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.borderColor = "#f1f5f9";
+                    e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+                    e.currentTarget.style.borderColor = "var(--border, #f1f5f9)";
                     e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.02)";
                   }}
                 >
@@ -925,7 +965,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                         style={{
                           fontSize: "0.84375rem",
                           fontWeight: 600,
-                          color: "#0f172a",
+                          color: "var(--foreground, #0f172a)",
                           lineHeight: 1.3,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -937,7 +977,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                       <span
                         style={{
                           fontSize: "0.6875rem",
-                          color: "#64748b",
+                          color: "var(--foreground-muted, #64748b)",
                           marginTop: "2px",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -967,7 +1007,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                         {accurateCount}
                       </span>
                     )}
-                    <ChevronRight size={16} style={{ color: "#94a3b8" }} />
+                    <ChevronRight size={16} style={{ color: "var(--foreground-muted, #94a3b8)" }} />
                   </div>
                 </div>
               );
@@ -991,7 +1031,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               gap: "6px",
               background: "none",
               border: "none",
-              color: "#2563eb",
+              color: "var(--primary, #047857)",
               fontSize: "0.75rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -1007,8 +1047,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
           <div
             style={{
               padding: "12px 14px",
-              backgroundColor: getCategoryTheme(activeCategory.slug).background,
-              border: `1px solid ${getCategoryTheme(activeCategory.slug).border}`,
+              backgroundColor: "var(--surface-muted, #f8fafc)",
+              border: `1px solid var(--border, #e2e8f0)`,
+              borderLeft: `4px solid ${getCategoryTheme(activeCategory.slug).accent}`,
               borderRadius: "10px",
               display: "flex",
               alignItems: "center",
@@ -1021,7 +1062,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 style={{
                   fontSize: "0.9375rem",
                   fontWeight: 700,
-                  color: "#0f172a",
+                  color: "var(--foreground, #0f172a)",
                   margin: 0,
                   lineHeight: 1.25,
                 }}
@@ -1032,7 +1073,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 <p
                   style={{
                     fontSize: "0.6875rem",
-                    color: "#475569",
+                    color: "var(--foreground-muted, #475569)",
                     margin: "3px 0 0 0",
                     lineHeight: 1.35,
                   }}
@@ -1050,7 +1091,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 position: "absolute",
                 left: "0.75rem",
-                color: "#94a3b8",
+                color: "var(--foreground-muted, #94a3b8)",
                 pointerEvents: "none",
               }}
             />
@@ -1062,12 +1103,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 width: "100%",
                 height: "36px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
+                border: "1px solid var(--border, #e2e8f0)",
                 borderRadius: "8px",
                 padding: "0 2rem 0 2.25rem",
                 fontSize: "0.8125rem",
-                color: "#0f172a",
+                color: "var(--foreground, #0f172a)",
                 outline: "none",
                 fontFamily: "inherit",
               }}
@@ -1081,7 +1122,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   right: "0.625rem",
                   background: "none",
                   border: "none",
-                  color: "#94a3b8",
+                  color: "var(--foreground-muted, #94a3b8)",
                   cursor: "pointer",
                 }}
               >
@@ -1101,10 +1142,10 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   padding: "0 2px",
                 }}
               >
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--foreground-muted, #64748b)", textTransform: "uppercase" }}>
                   Matching Illustrations
                 </span>
-                <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
+                <span style={{ fontSize: "11px", color: "var(--foreground-muted, #64748b)", fontWeight: 500 }}>
                   {categoryAssets.length} found
                 </span>
               </div>
@@ -1124,10 +1165,10 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   style={{
                     padding: "2rem 1rem",
                     textAlign: "center",
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: "var(--surface-muted, #f8fafc)",
                     borderRadius: "10px",
-                    border: "1px dashed #cbd5e1",
-                    color: "#64748b",
+                    border: "1px dashed var(--border, #cbd5e1)",
+                    color: "var(--foreground-muted, #64748b)",
                     fontSize: "0.8125rem",
                   }}
                 >
@@ -1152,12 +1193,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                     fontWeight: 700,
                     textTransform: "uppercase",
                     letterSpacing: "0.06em",
-                    color: "#64748b",
+                    color: "var(--foreground-muted, #64748b)",
                   }}
                 >
                   Subcategories ({activeCategory.subcategories.length})
                 </span>
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>Select to browse</span>
+                <span style={{ fontSize: "11px", color: "var(--foreground-muted, #94a3b8)" }}>Select to browse</span>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
@@ -1178,8 +1219,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                       }}
                       style={{
                         padding: "10px 14px",
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #f1f5f9",
+                        backgroundColor: "var(--surface, #ffffff)",
+                        border: "1px solid var(--border, #f1f5f9)",
                         borderRadius: "8px",
                         display: "flex",
                         alignItems: "center",
@@ -1188,12 +1229,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                         transition: "all 0.15s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#eff6ff";
-                        e.currentTarget.style.borderColor = "#bfdbfe";
+                        e.currentTarget.style.backgroundColor = "var(--surface-hover, #ecfdf5)";
+                        e.currentTarget.style.borderColor = "var(--primary, #a7f3d0)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#ffffff";
-                        e.currentTarget.style.borderColor = "#f1f5f9";
+                        e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+                        e.currentTarget.style.borderColor = "var(--border, #f1f5f9)";
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
@@ -1210,7 +1251,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                           style={{
                             fontSize: "0.8125rem",
                             fontWeight: 500,
-                            color: "#1e293b",
+                            color: "var(--foreground, #1e293b)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -1225,8 +1266,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                           <span
                             style={{
                               fontSize: "10px",
-                              color: "#64748b",
-                              backgroundColor: "#f1f5f9",
+                              color: "var(--foreground-muted, #64748b)",
+                              backgroundColor: "var(--surface-muted, #f1f5f9)",
                               padding: "2px 6px",
                               borderRadius: "10px",
                               fontWeight: 500,
@@ -1235,7 +1276,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                             {subCount}
                           </span>
                         )}
-                        <ChevronRight size={14} style={{ color: "#94a3b8" }} />
+                        <ChevronRight size={14} style={{ color: "var(--foreground-muted, #94a3b8)" }} />
                       </div>
                     </div>
                   );
@@ -1258,7 +1299,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               alignItems: "center",
               gap: "4px",
               fontSize: "11px",
-              color: "#64748b",
+              color: "var(--foreground-muted, #64748b)",
               flexWrap: "wrap",
             }}
           >
@@ -1268,7 +1309,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 background: "none",
                 border: "none",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
                 cursor: "pointer",
                 padding: 0,
                 fontWeight: 600,
@@ -1277,14 +1318,14 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
             >
               Assets
             </button>
-            <ChevronRight size={11} style={{ color: "#cbd5e1" }} />
+            <ChevronRight size={11} style={{ color: "var(--border-strong, #cbd5e1)" }} />
             <button
               type="button"
               onClick={() => navigateToCategory(activeCategory.slug)}
               style={{
                 background: "none",
                 border: "none",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
                 cursor: "pointer",
                 padding: 0,
                 fontWeight: 600,
@@ -1293,8 +1334,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
             >
               {activeCategory.name}
             </button>
-            <ChevronRight size={11} style={{ color: "#cbd5e1" }} />
-            <span style={{ fontWeight: 600, color: "#0f172a" }}>
+            <ChevronRight size={11} style={{ color: "var(--border-strong, #cbd5e1)" }} />
+            <span style={{ fontWeight: 600, color: "var(--foreground, #0f172a)" }}>
               {activeSubcategory.name}
             </span>
           </div>
@@ -1312,13 +1353,13 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 style={{
                   fontSize: "1rem",
                   fontWeight: 700,
-                  color: "#0f172a",
+                  color: "var(--foreground, #0f172a)",
                   margin: 0,
                 }}
               >
                 {activeSubcategory.name}
               </h3>
-              <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "2px 0 0 0" }}>
+              <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted, #64748b)", margin: "2px 0 0 0" }}>
                 {subcategoryAssets.length}{" "}
                 {subcategoryAssets.length === 1 ? "illustration" : "illustrations"} in {activeCategory.name}
               </p>
@@ -1334,9 +1375,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 gap: "4px",
                 padding: "4px 8px",
                 borderRadius: "6px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#ffffff",
-                color: "#475569",
+                border: "1px solid var(--border, #e2e8f0)",
+                backgroundColor: "var(--surface, #ffffff)",
+                color: "var(--foreground, #475569)",
                 fontSize: "11px",
                 fontWeight: 500,
                 cursor: "pointer",
@@ -1354,7 +1395,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 position: "absolute",
                 left: "0.75rem",
-                color: "#94a3b8",
+                color: "var(--foreground-muted, #94a3b8)",
                 pointerEvents: "none",
               }}
             />
@@ -1366,12 +1407,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               style={{
                 width: "100%",
                 height: "36px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
+                border: "1px solid var(--border, #e2e8f0)",
                 borderRadius: "8px",
                 padding: "0 2rem 0 2.25rem",
                 fontSize: "0.8125rem",
-                color: "#0f172a",
+                color: "var(--foreground, #0f172a)",
                 outline: "none",
                 fontFamily: "inherit",
               }}
@@ -1385,7 +1426,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   right: "0.625rem",
                   background: "none",
                   border: "none",
-                  color: "#94a3b8",
+                  color: "var(--foreground-muted, #94a3b8)",
                   cursor: "pointer",
                 }}
               >
@@ -1403,12 +1444,12 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               padding: "0 2px",
             }}
           >
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--foreground-muted, #64748b)", textTransform: "uppercase" }}>
               Illustrations ({subcategoryAssets.length})
             </span>
 
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "#94a3b8" }}>Sort:</span>
+              <span style={{ fontSize: "11px", color: "var(--foreground-muted, #94a3b8)" }}>Sort:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "name" | "recent")}
@@ -1416,9 +1457,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   fontSize: "11px",
                   padding: "2px 6px",
                   borderRadius: "4px",
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#ffffff",
-                  color: "#475569",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  backgroundColor: "var(--surface, #ffffff)",
+                  color: "var(--foreground, #475569)",
                   outline: "none",
                   cursor: "pointer",
                 }}
@@ -1451,16 +1492,16 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                     width: "100%",
                     padding: "8px",
                     borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
-                    color: "#2563eb",
+                    border: "1px solid var(--border, #e2e8f0)",
+                    backgroundColor: "var(--surface-muted, #f8fafc)",
+                    color: "var(--primary, #047857)",
                     fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
                     transition: "all 0.15s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover, #ecfdf5)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-muted, #f8fafc)")}
                 >
                   Load More ({subcategoryAssets.length - displayCount} remaining)
                 </button>
@@ -1476,17 +1517,17 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: "0.75rem",
-                backgroundColor: "#f8fafc",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
                 borderRadius: "10px",
-                border: "1px dashed #cbd5e1",
+                border: "1px dashed var(--border-strong, #cbd5e1)",
               }}
             >
               <CategoryThumbnail slug={activeCategory.slug} size={48} />
               <div>
-                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground, #0f172a)", margin: 0 }}>
                   No illustrations uploaded yet
                 </h4>
-                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0 0", maxWidth: "220px" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted, #64748b)", margin: "4px 0 0 0", maxWidth: "220px" }}>
                   Illustrations assigned to &ldquo;{activeSubcategory.name}&rdquo; will appear here.
                 </p>
               </div>
@@ -1497,9 +1538,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   fontSize: "11px",
                   padding: "6px 12px",
                   borderRadius: "6px",
-                  backgroundColor: "#ffffff",
-                  color: "#2563eb",
-                  border: "1px solid #bfdbfe",
+                  backgroundColor: "var(--surface, #ffffff)",
+                  color: "var(--primary, #047857)",
+                  border: "1px solid var(--primary, #a7f3d0)",
                   cursor: "pointer",
                   fontWeight: 600,
                 }}
@@ -1533,7 +1574,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 gap: "5px",
                 background: "none",
                 border: "none",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
                 fontSize: "0.75rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -1544,7 +1585,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               <span>Back to Categories</span>
             </button>
 
-            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
+            <span style={{ fontSize: "11px", color: "var(--foreground-muted, #64748b)", fontWeight: 500 }}>
               {globalSearchResults.length} {globalSearchResults.length === 1 ? "result" : "results"}
             </span>
           </div>
@@ -1570,9 +1611,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                     width: "100%",
                     padding: "8px",
                     borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
-                    color: "#2563eb",
+                    border: "1px solid var(--border, #e2e8f0)",
+                    backgroundColor: "var(--surface-muted, #f8fafc)",
+                    color: "var(--primary, #047857)",
                     fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
@@ -1592,17 +1633,17 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: "0.75rem",
-                backgroundColor: "#f8fafc",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
                 borderRadius: "10px",
-                border: "1px dashed #cbd5e1",
+                border: "1px dashed var(--border-strong, #cbd5e1)",
               }}
             >
-              <Search size={24} style={{ color: "#94a3b8" }} />
+              <Search size={24} style={{ color: "var(--foreground-muted, #94a3b8)" }} />
               <div>
-                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground, #0f172a)", margin: 0 }}>
                   No illustrations found
                 </h4>
-                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0 0" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted, #64748b)", margin: "4px 0 0 0" }}>
                   No matches for &ldquo;{globalSearch}&rdquo; across the library.
                 </p>
               </div>
@@ -1618,9 +1659,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                         fontSize: "11px",
                         padding: "3px 8px",
                         borderRadius: "4px",
-                        backgroundColor: "#ffffff",
-                        color: "#2563eb",
-                        border: "1px solid #e2e8f0",
+                        backgroundColor: "var(--surface, #ffffff)",
+                        color: "var(--primary, #047857)",
+                        border: "1px solid var(--border, #e2e8f0)",
                         cursor: "pointer",
                       }}
                     >
@@ -1655,7 +1696,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 gap: "5px",
                 background: "none",
                 border: "none",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
                 fontSize: "0.75rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -1666,7 +1707,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               <span>Back to Categories</span>
             </button>
 
-            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
+            <span style={{ fontSize: "11px", color: "var(--foreground-muted, #64748b)", fontWeight: 500 }}>
               {favoriteAssets.length} saved
             </span>
           </div>
@@ -1677,20 +1718,20 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 width: "28px",
                 height: "28px",
                 borderRadius: "6px",
-                backgroundColor: "#fef3c7",
+                backgroundColor: "var(--warning-subtle, #fef3c7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#d97706",
+                color: "var(--warning, #d97706)",
               }}
             >
               <Star size={14} fill="#f59e0b" />
             </div>
             <div>
-              <h3 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+              <h3 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--foreground, #0f172a)", margin: 0 }}>
                 Favorite Illustrations
               </h3>
-              <p style={{ fontSize: "0.6875rem", color: "#64748b", margin: "2px 0 0 0" }}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--foreground-muted, #64748b)", margin: "2px 0 0 0" }}>
                 Quick access to your starred scientific figures
               </p>
             </div>
@@ -1715,17 +1756,17 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: "0.75rem",
-                backgroundColor: "#f8fafc",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
                 borderRadius: "10px",
-                border: "1px dashed #cbd5e1",
+                border: "1px dashed var(--border-strong, #cbd5e1)",
               }}
             >
               <Star size={24} style={{ color: "#f59e0b" }} />
               <div>
-                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground, #0f172a)", margin: 0 }}>
                   No favorites yet
                 </h4>
-                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0 0", maxWidth: "220px" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted, #64748b)", margin: "4px 0 0 0", maxWidth: "220px" }}>
                   Click the star icon in the top left corner of any illustration to save it here.
                 </p>
               </div>
@@ -1736,9 +1777,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                   fontSize: "11px",
                   padding: "6px 12px",
                   borderRadius: "6px",
-                  backgroundColor: "#ffffff",
-                  color: "#2563eb",
-                  border: "1px solid #bfdbfe",
+                  backgroundColor: "var(--surface, #ffffff)",
+                  color: "var(--primary, #047857)",
+                  border: "1px solid var(--primary, #a7f3d0)",
                   cursor: "pointer",
                   fontWeight: 600,
                 }}
@@ -1771,7 +1812,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 gap: "5px",
                 background: "none",
                 border: "none",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
                 fontSize: "0.75rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -1782,7 +1823,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               <span>Back to Categories</span>
             </button>
 
-            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
+            <span style={{ fontSize: "11px", color: "var(--foreground-muted, #64748b)", fontWeight: 500 }}>
               {allAssetsList.length} total
             </span>
           </div>
@@ -1795,7 +1836,7 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
               padding: "0 2px",
             }}
           >
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--foreground-muted, #64748b)", textTransform: "uppercase" }}>
               All Platform Illustrations
             </span>
             <select
@@ -1805,9 +1846,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 fontSize: "11px",
                 padding: "2px 6px",
                 borderRadius: "4px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#ffffff",
-                color: "#475569",
+                border: "1px solid var(--border, #e2e8f0)",
+                backgroundColor: "var(--surface, #ffffff)",
+                color: "var(--foreground, #475569)",
                 outline: "none",
                 cursor: "pointer",
               }}
@@ -1835,9 +1876,9 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
                 width: "100%",
                 padding: "8px",
                 borderRadius: "8px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#f8fafc",
-                color: "#2563eb",
+                border: "1px solid var(--border, #e2e8f0)",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
+                color: "var(--primary, #047857)",
                 fontSize: "12px",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -1848,6 +1889,8 @@ export const ScientificAssetsPanel: React.FC<ScientificAssetsPanelProps> = ({
           )}
         </div>
       )}
+
+      <AssetHoverPreview target={previewTarget} />
     </div>
   );
 };

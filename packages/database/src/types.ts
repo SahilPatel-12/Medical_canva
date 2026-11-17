@@ -40,6 +40,10 @@ export interface AssetTableRow {
   tags: string[];
   svg_content: string | null;
   thumbnail_url: string | null;
+  status?: "published" | "draft" | "archived" | null;
+  content_hash?: string | null;
+  version?: number | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }

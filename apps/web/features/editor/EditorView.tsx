@@ -11,24 +11,12 @@ import { EditorLeftPanel, LeftPanelTab } from "./EditorLeftPanel";
 import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
 import { EditorBottomBar } from "./EditorBottomBar";
 import { EditorGridViewModal } from "./EditorGridViewModal";
+import { EditorCanvasViewport } from "./EditorCanvasViewport";
+import { EditorContextToolbar } from "./EditorContextToolbar";
+import { MultiSelectionActions, MultiSelectionToolbar } from "./inspector/MultiSelection";
+import { EditorContextMenu, buildCanvasMenu } from "./EditorContextMenu";
 import { Button } from "@design-platform/ui";
-import {
-  ArrowLeft,
-  Loader2,
-  AlertCircle,
-  Hand,
-  Copy,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  Crosshair,
-  SlidersHorizontal,
-  Sparkles,
-  LibraryBig,
-  Type,
-  Shapes,
-  Upload,
-} from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@design-platform/auth";
 import { ShareDialog } from "../sharing/ShareDialog";
 import { useDesignCollaboration } from "../collaboration/useDesignCollaboration";
@@ -99,12 +87,12 @@ export const EditorView: React.FC<EditorViewProps> = ({ designId }) => {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          backgroundColor: "#f8fafc",
-          color: "#64748b",
+          backgroundColor: "var(--background, #f8fafc)",
+          color: "var(--foreground-muted, #64748b)",
           gap: "1rem",
         }}
       >
-        <Loader2 size={36} className="animate-spin" style={{ color: "#2563eb" }} />
+        <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary, #047857)" }} />
         <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Opening design studio...</span>
       </div>
     );
@@ -119,8 +107,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ designId }) => {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          backgroundColor: "#f8fafc",
-          color: "#0f172a",
+          backgroundColor: "var(--background, #f8fafc)",
+          color: "var(--foreground, #0f172a)",
           padding: "2rem",
           textAlign: "center",
         }}
@@ -199,6 +187,18 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
     addAssetToCenter,
     addShape,
     addText,
+    insertElement,
+    moveElementTo,
+    editText,
+    selectedIds,
+    setSelection,
+    toggleInSelection,
+    alignSelection,
+    distributeSelection,
+    deleteSelection,
+    duplicateSelection,
+    updateElements,
+    groupSelection,
     updateElement,
     deleteElement,
     duplicateElement,
@@ -208,8 +208,19 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
     sendToBack,
     updateSelectedSvgColor,
     updateSelectedSvgColorMap,
+    updateSelectedSvgComponentColor,
+    applyScientificPreset,
+    distributeSvgComponents,
+    groupEditSession,
+    enterGroupEdit,
+    exitGroupEdit,
+    exitAllGroupEdits,
+    ungroupSelectedLayer,
+    groupElements,
+    ungroupSelected,
     resetSelectedSvgColors,
     setCanvasBackgroundColor,
+    setPageBackgroundColor,
     exportImage,
     renameDocument,
     undo,
@@ -221,12 +232,97 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
     duplicatePage,
     deletePage,
     reorderPages,
+    setPageName,
+    setViewportController,
     setZoom,
     zoomIn,
     zoomOut,
     fitToScreen,
     resetZoom,
+    contextMenu,
+    closeContextMenu,
+    cutSelection,
+    copySelection,
+    pasteSelection,
+    hasClipboard,
+    flipSelection,
+    flipSelectedLayer,
+    canFlip,
+    toggleLockSelection,
+    duplicateSelectedLayer,
+    deleteSelectedLayer,
+    alignSelectionToPage,
+    selectAll,
+    canEnterGroup,
   } = useEditor({ initialDocument, repository, isReadOnly });
+
+  // Several elements selected: shared actions for the toolbar and the inspector
+  const selectedSet = new Set(selectedIds);
+  const multiElements = (state.document.pages?.[activePageIndex]?.elements || []).filter((el) => selectedSet.has(el.id));
+  const multi: MultiSelectionActions | null =
+    multiElements.length > 1
+      ? {
+          elements: multiElements,
+          onAlign: alignSelection,
+          onDistribute: distributeSelection,
+          onGroup: () => groupSelection(),
+          onDuplicate: duplicateSelection,
+          onDelete: deleteSelection,
+          onUpdateMany: updateElements,
+          onSelectOne: (id) => setSelection([id]),
+          onDeselectOne: (id) => setSelection(selectedIds.filter((x) => x !== id)),
+        }
+      : null;
+
+  // Right-click menu: its items follow what is selected (element(s), a part, or nothing)
+  const pageElements = state.document.pages?.[activePageIndex]?.elements || [];
+  const menuTarget = multiElements.length === 1 ? multiElements[0]! : null;
+  const menuTargetIndex = menuTarget ? pageElements.findIndex((el) => el.id === menuTarget.id) : -1;
+  const canvasMenu = contextMenu
+    ? buildCanvasMenu({
+        selected: multiElements,
+        groupEditSession,
+        hasClipboard: hasClipboard(),
+        canUndo: state.canUndo,
+        canRedo: state.canRedo,
+        canFlip: (el, axis) => canFlip(el, axis),
+        canEnterGroup,
+        isTopmost: menuTargetIndex === pageElements.length - 1,
+        isBottommost: menuTargetIndex === 0,
+        actions: {
+          cut: cutSelection,
+          copy: copySelection,
+          paste: pasteSelection,
+          duplicate: duplicateSelection,
+          remove: deleteSelection,
+          flip: flipSelection,
+          flipPart: flipSelectedLayer,
+          duplicatePart: duplicateSelectedLayer,
+          removePart: deleteSelectedLayer,
+          bringToFront: () => bringToFront(),
+          bringForward: () => bringForward(),
+          sendBackward: () => sendBackward(),
+          sendToBack: () => sendToBack(),
+          align: alignSelection,
+          alignToPage: alignSelectionToPage,
+          distribute: distributeSelection,
+          group: () => groupSelection(),
+          ungroup: () => ungroupSelected(),
+          editParts: (id) => enterGroupEdit(id),
+          goInside: (id) => enterGroupEdit(id),
+          selectParent: exitGroupEdit,
+          doneEditingParts: exitAllGroupEdits,
+          ungroupPart: ungroupSelectedLayer,
+          editText,
+          selectAll,
+          toggleLock: toggleLockSelection,
+          undo,
+          redo,
+          addPage: () => addPage(undefined, activePageIndex),
+          fitToScreen,
+        },
+      })
+    : null;
 
   const handleExportPng = () => {
     const dataUrl = exportImage(2.0);
@@ -265,6 +361,14 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
   });
 
   const effectiveReadOnly = isReadOnly || !hasEditPermission;
+
+  // Automatically reveal properties panel when an element or subcomponent is selected
+  useEffect(() => {
+    if (selectedElement) {
+      setLeftPanelTab("properties");
+      setIsLeftPanelCollapsed(false);
+    }
+  }, [selectedElement?.id]);
 
   // Auto-save periodically if dirty (disabled in read-only viewer mode)
   useEffect(() => {
@@ -334,7 +438,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
       />
 
       {/* Main Studio Body: Contextual Left Panel + Expanded Center Canvas */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative", minHeight: 0 }}>
         {/* Contextual Left Toolbar & Inspector */}
         <EditorLeftPanel
           activeTab={leftPanelTab}
@@ -344,6 +448,14 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
           onAddAsset={addAssetToCenter}
           onAddShape={addShape}
           onAddText={addText}
+          onInsertElement={(template, startEditing) => {
+            const created = insertElement(template);
+            if (startEditing && created.type === "text") editText(created.id);
+          }}
+          onMoveElement={moveElementTo}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleInSelection}
+          multi={multi}
           document={state.document}
           selectedElement={selectedElement}
           activePageIndex={activePageIndex}
@@ -357,421 +469,87 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
           onSendToBack={sendToBack}
           onUpdateSvgColor={updateSelectedSvgColor}
           onUpdateSvgColorMap={updateSelectedSvgColorMap}
+          onUpdateSvgComponentColor={updateSelectedSvgComponentColor}
+          onApplyScientificPreset={applyScientificPreset}
+          onDistributeSvgComponents={distributeSvgComponents}
           onResetSvgColors={resetSelectedSvgColors}
+          groupEditSession={groupEditSession}
+          onEnterGroupEdit={enterGroupEdit}
+          onExitGroupEdit={exitGroupEdit}
+          onExitAllGroupEdits={exitAllGroupEdits}
+          onUngroupLayer={ungroupSelectedLayer}
           onSetCanvasBackground={setCanvasBackgroundColor}
+          onSetPageBackground={(color) => setPageBackgroundColor(color)}
         />
 
-        {/* Center Canvas Viewport (Maximized Area) */}
-        <div
-          style={{
-            flex: 1,
-            backgroundColor: "#eef2f6",
-            backgroundImage: "radial-gradient(circle, #cbd5e1 1.25px, transparent 1.25px)",
-            backgroundSize: "24px 24px",
-            position: "relative",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+        {/* Center: Canva-style page stack (pages stay centered; scroll between pages, zoom in/out) */}
+        <EditorCanvasViewport
+          document={state.document}
+          activePageIndex={activePageIndex}
+          isReadOnly={effectiveReadOnly}
+          containerRef={containerRef}
+          setViewportController={setViewportController}
+          onSelectPage={setActivePage}
+          onAddPage={(afterIndex) => addPage(undefined, afterIndex)}
+          onDuplicatePage={duplicatePage}
+          onDeletePage={deletePage}
+          onMovePage={reorderPages}
+          onRenamePage={setPageName}
         >
-          {/* Konva Stage Mount Point */}
-          <div
-            ref={containerRef}
-            style={{
-              width: "100%",
-              height: "100%",
-              outline: "none",
-            }}
-          />
 
-          {/* Empty Canvas Guidance Card */}
-          {(!pages[activePageIndex]?.elements || pages[activePageIndex].elements.length === 0) && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                backdropFilter: "blur(12px)",
-                padding: "2rem 2.5rem",
-                borderRadius: "16px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-                maxWidth: "460px",
-                pointerEvents: "auto",
-                zIndex: 25,
-                userSelect: "none",
-              }}
-            >
-              <div
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "14px",
-                  backgroundColor: "#eff6ff",
-                  border: "1px solid #bfdbfe",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#2563eb",
-                  marginBottom: "1rem",
-                }}
-              >
-                <Sparkles size={24} />
-              </div>
-              <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0f172a", margin: "0 0 0.375rem" }}>
-                Start your scientific illustration
-              </h3>
-              <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-                Add a scientific illustration from the library, insert text or shapes, or upload your own files.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", width: "100%" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelTab("assets");
-                    setIsLeftPanelCollapsed(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#2563eb",
-                    color: "#ffffff",
-                    border: "none",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(37, 99, 235, 0.2)",
-                  }}
-                >
-                  <LibraryBig size={14} />
-                  <span>Browse Assets</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addText("heading")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Type size={14} />
-                  <span>Add Text</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addShape("rectangle")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Shapes size={14} />
-                  <span>Add Shape</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelTab("uploads");
-                    setIsLeftPanelCollapsed(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Upload size={14} />
-                  <span>Upload File</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Floating Element Quick-Action Bar */}
-          {selectedElement && (
-            <div
-              style={{
-                position: "absolute",
-                top: "16px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                display: "flex",
-                alignItems: "center",
-                gap: "3px",
-                backgroundColor: "rgba(255, 255, 255, 0.96)",
-                backdropFilter: "blur(12px)",
-                padding: "4px 8px",
-                borderRadius: "10px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
-                zIndex: 30,
-                userSelect: "none",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "#0f172a",
-                  padding: "0 6px",
-                  maxWidth: "140px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                title={selectedElement.name || selectedElement.type}
-              >
-                {selectedElement.name || selectedElement.type}
-              </span>
-
-              <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }} />
-
-              {/* Edit Properties Button */}
-              <button
-                type="button"
-                onClick={() => {
+          {/* Contextual toolbar: the most used actions for the selection */}
+          {multi && !effectiveReadOnly && (
+            <div className="ctb-wrap">
+              <MultiSelectionToolbar
+                actions={multi}
+                onOpenInspector={() => {
                   setLeftPanelTab("properties");
                   setIsLeftPanelCollapsed(false);
                 }}
-                title="Edit Properties & Vector Colors"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
-                  borderRadius: "6px",
-                  color: "#2563eb",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "background-color 0.1s ease",
+              />
+            </div>
+          )}
+          {selectedElement && !multi && !effectiveReadOnly && (
+            <div className="ctb-wrap">
+              <EditorContextToolbar
+                element={selectedElement}
+                groupEditSession={groupEditSession}
+                onUpdateElement={updateElement}
+                onUpdateSvgColor={updateSelectedSvgColor}
+                onUpdateSvgColorMap={updateSelectedSvgColorMap}
+                onDuplicate={duplicateElement}
+                onDelete={deleteElement}
+                onEnterGroupEdit={enterGroupEdit}
+                onExitGroupEdit={exitGroupEdit}
+                onExitAllGroupEdits={exitAllGroupEdits}
+                onUngroupLayer={ungroupSelectedLayer}
+                onSplitIllustration={distributeSvgComponents}
+                onOpenInspector={() => {
+                  setLeftPanelTab("properties");
+                  setIsLeftPanelCollapsed(false);
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#dbeafe")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
-              >
-                <SlidersHorizontal size={13} />
-                <span>Edit</span>
-              </button>
-
-              {/* Duplicate */}
-              <button
-                type="button"
-                onClick={() => duplicateElement(selectedElement.id)}
-                title="Duplicate Element (Ctrl/Cmd + D)"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#334155",
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "background-color 0.1s ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <Copy size={13} style={{ color: "#2563eb" }} />
-                <span>Copy</span>
-              </button>
-
-              {/* Layer Forward */}
-              <button
-                type="button"
-                onClick={() => bringForward(selectedElement.id)}
-                title="Bring Forward (])"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "4px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#475569",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <ArrowUp size={13} />
-              </button>
-
-              {/* Layer Backward */}
-              <button
-                type="button"
-                onClick={() => sendBackward(selectedElement.id)}
-                title="Send Backward ([)"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "4px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#475569",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <ArrowDown size={13} />
-              </button>
-
-              {/* Center on Canvas */}
-              <button
-                type="button"
-                onClick={() => {
-                  const centerX = Math.max(
-                    0,
-                    Math.round((state.document.width - selectedElement.width) / 2)
-                  );
-                  const centerY = Math.max(
-                    0,
-                    Math.round((state.document.height - selectedElement.height) / 2)
-                  );
-                  updateElement(selectedElement.id, { x: centerX, y: centerY });
-                }}
-                title="Center on Canvas"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "4px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#2563eb",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <Crosshair size={13} />
-              </button>
-
-              <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }} />
-
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => deleteElement(selectedElement.id)}
-                title="Delete Element (Delete / Backspace)"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#dc2626",
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "background-color 0.1s ease",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#fee2e2")
-                }
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <Trash2 size={13} />
-                <span>Delete</span>
-              </button>
+              />
             </div>
           )}
 
-          {/* Floating Navigation Hint (Bottom Left) */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "16px",
-              left: "16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              backdropFilter: "blur(8px)",
-              padding: "5px 10px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              fontSize: "11px",
-              color: "#64748b",
-              pointerEvents: "none",
-              userSelect: "none",
-              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <Hand size={13} style={{ color: "#2563eb" }} />
-            <span>Scroll / Pinch to zoom • Hold Space to pan</span>
-          </div>
-        </div>
+          {/* Floating canvas controls: notes · pages · zoom */}
+          <EditorBottomBar
+            document={state.document}
+            pages={pages}
+            activePageIndex={activePageIndex}
+            zoom={state.zoom}
+            onSelectPage={setActivePage}
+            onAddPage={() => addPage()}
+            onSetZoom={setZoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onFitToScreen={fitToScreen}
+            onResetZoom={resetZoom}
+            onOpenGridView={() => setIsGridViewOpen(true)}
+            isReadOnly={effectiveReadOnly}
+          />
+        </EditorCanvasViewport>
       </div>
-
-      {/* Canva Bottom Bar: Multi-Page Filmstrip, Tabs, Notes, Timer, Zoom Slider */}
-      <EditorBottomBar
-        document={state.document}
-        pages={pages}
-        activePageIndex={activePageIndex}
-        zoom={state.zoom}
-        onSelectPage={setActivePage}
-        onAddPage={() => addPage()}
-        onDuplicatePage={duplicatePage}
-        onDeletePage={deletePage}
-        onReorderPages={reorderPages}
-        onSetZoom={setZoom}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onFitToScreen={fitToScreen}
-        onResetZoom={resetZoom}
-        onOpenGridView={() => setIsGridViewOpen(true)}
-        isReadOnly={effectiveReadOnly}
-      />
 
       {/* Canva Full-Screen Grid View Modal */}
       <EditorGridViewModal
@@ -786,6 +564,17 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
         onReorderPages={reorderPages}
         isReadOnly={effectiveReadOnly}
       />
+
+      {contextMenu && canvasMenu && !effectiveReadOnly && (
+        <EditorContextMenu
+          key={`${contextMenu.x},${contextMenu.y}`}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          title={canvasMenu.title}
+          entries={canvasMenu.entries}
+          onClose={closeContextMenu}
+        />
+      )}
 
       <ShareDialog
         isOpen={isShareOpen}

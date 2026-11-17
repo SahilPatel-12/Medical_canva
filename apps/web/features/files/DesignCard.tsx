@@ -2,10 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { DesignDocument } from "@design-platform/types";
-import { Badge, Dropdown, DropdownItem } from "@design-platform/ui";
-import { MoreVertical, Copy, Trash2, Edit2, ExternalLink, Share2 } from "lucide-react";
+import { DesignDocument, getPageBackground } from "@design-platform/types";
+import { Dropdown, DropdownItem } from "@design-platform/ui";
+import { MoreHorizontal, Copy, Trash2, Edit2, ExternalLink, Share2, Star, Check } from "lucide-react";
 import { ShareDialog } from "../sharing/ShareDialog";
+import { PageThumbnailPreview } from "../editor/PageThumbnailPreview";
+import styles from "./files.module.css";
 
 
 export interface DesignCardProps {
@@ -14,6 +16,11 @@ export interface DesignCardProps {
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   isViewer?: boolean;
+  /** Multi-select */
+  isSelected?: boolean;
+  /** True while any design is selected: clicking a card toggles it instead of opening it */
+  selectionMode?: boolean;
+  onToggleSelect?: (id: string, range: boolean) => void;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -35,6 +42,9 @@ export const DesignCard: React.FC<DesignCardProps> = ({
   onDuplicate,
   onDelete,
   isViewer = false,
+  isSelected = false,
+  selectionMode = false,
+  onToggleSelect,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isShareOpen, setIsShareOpen] = React.useState(false);
@@ -53,7 +63,7 @@ export const DesignCard: React.FC<DesignCardProps> = ({
           {
             id: "share",
             label: "Share",
-            icon: <Share2 size={14} style={{ color: "#3b82f6" }} />,
+            icon: <Share2 size={14} style={{ color: "#10b981" }} />,
             onClick: () => setIsShareOpen(true),
           },
           {
@@ -79,186 +89,95 @@ export const DesignCard: React.FC<DesignCardProps> = ({
       : []),
   ];
 
-  const elementCount = design.pages?.[0]?.elements?.length || 0;
-
+  const firstPage = design.pages?.[0];
+  const pageCount = design.pages?.length || 1;
+  const ratio = (design.width || 1) / (design.height || 1);
+  // Fit the page preview inside the 16:10 thumbnail
+  const pageStyle: React.CSSProperties =
+    ratio >= 1.6 ? { width: "100%", aspectRatio: `${ratio}` } : { height: "100%", aspectRatio: `${ratio}` };
 
   return (
-    <div
-      style={{
-        backgroundColor: "#141417",
-        border: "1px solid #27272a",
-        borderRadius: "12px",
-        display: "flex",
-        flexDirection: "column",
-        transition: "transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
-        position: "relative",
-        zIndex: isMenuOpen ? 50 : 1,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#3f3f46";
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 8px 24px -8px rgba(0, 0, 0, 0.5)";
-        if (!isMenuOpen) {
-          e.currentTarget.style.zIndex = "10";
-        }
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#27272a";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-        if (!isMenuOpen) {
-          e.currentTarget.style.zIndex = "1";
-        }
-      }}
+    <article
+      className={`${styles.card} ${isSelected ? styles.cardSelected : ""} ${selectionMode ? styles.selecting : ""}`}
+      style={{ zIndex: isMenuOpen ? 50 : undefined }}
     >
-      {/* Thumbnail Area */}
+      {onToggleSelect && (
+        <label className={styles.check} title={isSelected ? "Deselect" : "Select"} onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => {}}
+            onClick={(e) => onToggleSelect(design.id, e.shiftKey)}
+            aria-label={`Select ${design.name}`}
+          />
+          <span aria-hidden>
+            <Check size={14} strokeWidth={3} />
+          </span>
+        </label>
+      )}
       <Link
         href={`/editor/${design.id}`}
-        style={{
-          display: "block",
-          aspectRatio: "16 / 10",
-          backgroundColor: "#18181b",
-          borderBottom: "1px solid #27272a",
-          borderTopLeftRadius: "11px",
-          borderTopRightRadius: "11px",
-          position: "relative",
-          overflow: "hidden",
-          textDecoration: "none",
+        className={styles.thumb}
+        aria-label={`Open ${design.name}`}
+        onClick={(e) => {
+          if (selectionMode && onToggleSelect) {
+            e.preventDefault();
+            onToggleSelect(design.id, e.shiftKey);
+          }
         }}
       >
-        {design.thumbnail ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={design.thumbnail}
-            alt={design.name}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              backgroundColor: design.backgroundColor || "#ffffff",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              backgroundColor: design.backgroundColor || "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "1rem",
-              position: "relative",
-            }}
-          >
-            {/* Minimal schematic representation */}
-            <div
-              style={{
-                width: "80%",
-                height: "80%",
-                border: "1px dashed #cbd5e1",
-                borderRadius: "6px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  backgroundColor: "rgba(59, 130, 246, 0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#3b82f6",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-              >
-                {elementCount}
-              </div>
-              <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>
-                {elementCount === 1 ? "1 element" : `${elementCount} elements`}
-              </span>
+        <div className={styles.thumbPage} style={pageStyle}>
+          {design.thumbnail ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={design.thumbnail} alt="" />
+          ) : firstPage && firstPage.elements.length > 0 ? (
+            <PageThumbnailPreview
+              page={firstPage}
+              docWidth={design.width}
+              docHeight={design.height}
+              backgroundColor={getPageBackground(design, 0)}
+              preferVector
+            />
+          ) : (
+            <div className={styles.thumbEmpty} style={{ height: "100%", background: getPageBackground(design, 0) }}>
+              Blank page
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        <span className={styles.openHint}>{selectionMode ? (isSelected ? "Selected" : "Select") : "Open"}</span>
       </Link>
+      {design.favorite && (
+        <span className={styles.fav} title="Favorite">
+          <Star size={15} fill="currentColor" />
+        </span>
+      )}
 
-      {/* Card Info */}
-      <div
-        style={{
-          padding: "0.875rem 1rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "0.75rem",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Link
-            href={`/editor/${design.id}`}
-            style={{
-              display: "block",
-              color: "#f4f4f5",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              textDecoration: "none",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={design.name}
-          >
+      <div className={styles.cardBody}>
+        <div className={styles.cardText}>
+          <Link href={`/editor/${design.id}`} className={styles.cardName} title={design.name}>
             {design.name}
           </Link>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginTop: "0.25rem",
-              fontSize: "0.75rem",
-              color: "#71717a",
-            }}
-          >
-            <Badge variant="outline" size="sm">
+          <div className={styles.cardMeta}>
+            <span>
               {design.width} × {design.height}
-            </Badge>
-            <span>•</span>
+            </span>
+            <span className={styles.dot} />
             <span>{formatRelativeTime(design.updatedAt || design.createdAt)}</span>
+            {pageCount > 1 && (
+              <>
+                <span className={styles.dot} />
+                <span>{pageCount} pages</span>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Menu ••• */}
         <Dropdown
           align="right"
           onOpenChange={setIsMenuOpen}
           trigger={
-            <button
-              type="button"
-              aria-label="Design options"
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#a1a1aa",
-                padding: "6px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background-color 0.15s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#27272a")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-            >
-              <MoreVertical size={16} />
+            <button type="button" aria-label={`Options for ${design.name}`} className={styles.iconBtn}>
+              <MoreHorizontal size={18} />
             </button>
           }
           items={menuItems}
@@ -271,7 +190,6 @@ export const DesignCard: React.FC<DesignCardProps> = ({
         designId={design.id}
         designName={design.name}
       />
-    </div>
+    </article>
   );
 };
-

@@ -6,3 +6,4 @@ export * from "./Card";
 export * from "./Dropdown";
 export * from "./ColorPicker";
 export * from "./Tabs";
+export * from "./ThemeContext";

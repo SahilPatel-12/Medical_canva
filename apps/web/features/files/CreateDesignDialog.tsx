@@ -169,7 +169,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
             style={{
               fontSize: "0.8125rem",
               fontWeight: 500,
-              color: "#e4e4e7",
+              color: "var(--foreground, #e4e4e7)",
               letterSpacing: "0.01em",
             }}
           >
@@ -190,17 +190,17 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
                     gap: "0.75rem",
                     padding: "0.75rem",
                     borderRadius: "8px",
-                    backgroundColor: isSelected ? "rgba(59, 130, 246, 0.12)" : "#141417",
-                    border: `1px solid ${isSelected ? "#3b82f6" : "#27272a"}`,
+                    backgroundColor: isSelected ? "rgba(16, 185, 129, 0.12)" : "var(--surface-hover, #141417)",
+                    border: `1px solid ${isSelected ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
                     cursor: "pointer",
                     textAlign: "left",
-                    color: "#f4f4f5",
+                    color: "var(--foreground, #f4f4f5)",
                     transition: "all 0.15s ease",
                   }}
                 >
                   <span
                     style={{
-                      color: isSelected ? "#60a5fa" : "#71717a",
+                      color: isSelected ? "var(--primary, #34d399)" : "var(--muted-foreground, #71717a)",
                       display: "flex",
                       alignItems: "center",
                       marginTop: "2px",
@@ -210,7 +210,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
                   </span>
                   <div>
                     <div style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{preset.name}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#a1a1aa", marginTop: "2px" }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", marginTop: "2px" }}>
                       {preset.width} × {preset.height} px
                     </div>
                   </div>
@@ -248,7 +248,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
 
         {/* Background Color */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#e4e4e7" }}>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--foreground, #e4e4e7)" }}>
             Initial Canvas Background
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -262,7 +262,7 @@ export const CreateDesignDialog: React.FC<CreateDesignDialogProps> = ({
                   height: "24px",
                   borderRadius: "50%",
                   backgroundColor: bg,
-                  border: backgroundColor === bg ? "2px solid #3b82f6" : "1px solid #3f3f46",
+                  border: backgroundColor === bg ? "2px solid var(--primary, #10b981)" : "1px solid var(--border, #3f3f46)",
                   cursor: "pointer",
                 }}
               />

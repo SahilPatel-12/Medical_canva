@@ -228,8 +228,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
       maxWidth="680px"
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-          <div style={{ fontSize: "0.75rem", color: "#71717a" }}>
-            Your role: <strong style={{ color: "#e4e4e7", textTransform: "capitalize" }}>{workspace.role}</strong>
+          <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #71717a)" }}>
+            Your role: <strong style={{ color: "var(--foreground, #e4e4e7)", textTransform: "capitalize" }}>{workspace.role}</strong>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} id="close-workspace-dialog-btn">
             Done
@@ -244,7 +244,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            borderBottom: "1px solid #27272a",
+            borderBottom: "1px solid var(--border, #27272a)",
             paddingBottom: "0.75rem",
           }}
         >
@@ -256,8 +256,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
-              background: activeTab === "members" ? "#27272a" : "transparent",
-              color: activeTab === "members" ? "#ffffff" : "#a1a1aa",
+              background: activeTab === "members" ? "var(--surface-hover, #27272a)" : "transparent",
+              color: activeTab === "members" ? "var(--foreground, #ffffff)" : "var(--muted-foreground, #a1a1aa)",
               border: "none",
               borderRadius: "6px",
               padding: "6px 12px",
@@ -280,8 +280,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
-                background: activeTab === "invite" ? "#27272a" : "transparent",
-                color: activeTab === "invite" ? "#ffffff" : "#a1a1aa",
+                background: activeTab === "invite" ? "var(--surface-hover, #27272a)" : "transparent",
+                color: activeTab === "invite" ? "var(--foreground, #ffffff)" : "var(--muted-foreground, #a1a1aa)",
                 border: "none",
                 borderRadius: "6px",
                 padding: "6px 12px",
@@ -349,14 +349,14 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                   alignItems: "center",
                   gap: "0.625rem",
                   padding: "0.75rem 1rem",
-                  backgroundColor: "#141417",
-                  border: "1px solid #27272a",
+                  backgroundColor: "var(--surface-hover, #141417)",
+                  border: "1px solid var(--border, #27272a)",
                   borderRadius: "8px",
                   fontSize: "0.8125rem",
-                  color: "#a1a1aa",
+                  color: "var(--muted-foreground, #a1a1aa)",
                 }}
               >
-                <Lock size={15} style={{ color: "#71717a" }} />
+                <Lock size={15} style={{ color: "var(--muted-foreground, #71717a)" }} />
                 <span>
                   You have <strong>{workspace.role}</strong> access. Only workspace owners and admins can invite members or change roles.
                 </span>
@@ -366,7 +366,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
             {/* Members Section */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted-foreground, #71717a)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Active Members
                 </span>
                 {canManageMembers && (
@@ -382,11 +382,11 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
               </div>
 
               {isLoadingData ? (
-                <div style={{ padding: "2rem", textAlign: "center", color: "#71717a", fontSize: "0.8125rem" }}>
+                <div style={{ padding: "2rem", textAlign: "center", color: "var(--muted-foreground, #71717a)", fontSize: "0.8125rem" }}>
                   Loading workspace members...
                 </div>
               ) : members.length === 0 ? (
-                <div style={{ padding: "1.5rem", textAlign: "center", color: "#71717a", fontSize: "0.8125rem" }}>
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--muted-foreground, #71717a)", fontSize: "0.8125rem" }}>
                   No members found.
                 </div>
               ) : (
@@ -409,8 +409,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                           alignItems: "center",
                           justifyContent: "space-between",
                           padding: "0.75rem 1rem",
-                          backgroundColor: "#141417",
-                          border: "1px solid #27272a",
+                          backgroundColor: "var(--surface, #141417)",
+                          border: "1px solid var(--border, #27272a)",
                           borderRadius: "8px",
                           gap: "1rem",
                         }}
@@ -422,14 +422,14 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                               width: "36px",
                               height: "36px",
                               borderRadius: "50%",
-                              backgroundColor: "#27272a",
-                              border: "1px solid #3f3f46",
+                              backgroundColor: "var(--surface-hover, #27272a)",
+                              border: "1px solid var(--border, #3f3f46)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               fontSize: "0.75rem",
                               fontWeight: 600,
-                              color: "#e4e4e7",
+                              color: "var(--foreground, #e4e4e7)",
                               flexShrink: 0,
                             }}
                           >
@@ -441,7 +441,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                                 style={{
                                   fontSize: "0.875rem",
                                   fontWeight: 500,
-                                  color: "#f4f4f5",
+                                  color: "var(--foreground, #f4f4f5)",
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
@@ -450,10 +450,10 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                                 {displayName}
                               </span>
                               {isSelf && (
-                                <span style={{ fontSize: "0.6875rem", color: "#71717a" }}>(You)</span>
+                                <span style={{ fontSize: "0.6875rem", color: "var(--muted-foreground, #71717a)" }}>(You)</span>
                               )}
                             </div>
-                            <span style={{ fontSize: "0.75rem", color: "#71717a" }}>
+                            <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #71717a)" }}>
                               Joined {new Date(member.createdAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -472,9 +472,9 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                                 )
                               }
                               style={{
-                                backgroundColor: "#1f1f23",
-                                border: "1px solid #3f3f46",
-                                color: "#f4f4f5",
+                                backgroundColor: "var(--input-bg, #1f1f23)",
+                                border: "1px solid var(--border, #3f3f46)",
+                                color: "var(--foreground, #f4f4f5)",
                                 borderRadius: "6px",
                                 padding: "4px 8px",
                                 fontSize: "0.75rem",
@@ -517,7 +517,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
             {/* Pending Invitations Section (Owners/Admins only) */}
             {canManageMembers && invitations.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted-foreground, #71717a)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Pending Invitations ({invitations.length})
                 </span>
 
@@ -530,17 +530,17 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "0.75rem 1rem",
-                        backgroundColor: "#141417",
-                        border: "1px dashed #3f3f46",
+                        backgroundColor: "var(--surface, #141417)",
+                        border: "1px dashed var(--border, #3f3f46)",
                         borderRadius: "8px",
                       }}
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#e4e4e7" }}>
+                        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground, #e4e4e7)" }}>
                           {inv.email}
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "2px" }}>
-                          <span style={{ fontSize: "0.75rem", color: "#a1a1aa", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", display: "flex", alignItems: "center", gap: "4px" }}>
                             <Clock size={12} />
                             Expires in {Math.max(0, Math.ceil((new Date(inv.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days
                           </span>
@@ -574,7 +574,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
         {activeTab === "invite" && canManageMembers && (
           <form onSubmit={handleSendInvite} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#f4f4f5" }}>
+              <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--foreground, #f4f4f5)" }}>
                 Email Address
               </label>
               <Input
@@ -588,7 +588,7 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#f4f4f5" }}>
+              <label style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--foreground, #f4f4f5)" }}>
                 Select Role & Permissions
               </label>
 
@@ -600,8 +600,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                     alignItems: "flex-start",
                     gap: "0.75rem",
                     padding: "0.875rem",
-                    backgroundColor: inviteRole === "editor" ? "rgba(59, 130, 246, 0.08)" : "#141417",
-                    border: `1px solid ${inviteRole === "editor" ? "#3b82f6" : "#27272a"}`,
+                    backgroundColor: inviteRole === "editor" ? "rgba(16, 185, 129, 0.08)" : "var(--surface, #141417)",
+                    border: `1px solid ${inviteRole === "editor" ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
                     borderRadius: "8px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -617,10 +617,10 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                   />
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <strong style={{ fontSize: "0.875rem", color: "#f4f4f5" }}>Editor</strong>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--foreground, #f4f4f5)" }}>Editor</strong>
                       <Badge variant="success" size="sm">Recommended</Badge>
                     </div>
-                    <p style={{ fontSize: "0.75rem", color: "#a1a1aa", margin: "2px 0 0" }}>
+                    <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", margin: "2px 0 0" }}>
                       Can create, edit, save, and duplicate designs in this workspace.
                     </p>
                   </div>
@@ -633,8 +633,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                     alignItems: "flex-start",
                     gap: "0.75rem",
                     padding: "0.875rem",
-                    backgroundColor: inviteRole === "viewer" ? "rgba(59, 130, 246, 0.08)" : "#141417",
-                    border: `1px solid ${inviteRole === "viewer" ? "#3b82f6" : "#27272a"}`,
+                    backgroundColor: inviteRole === "viewer" ? "rgba(16, 185, 129, 0.08)" : "var(--surface, #141417)",
+                    border: `1px solid ${inviteRole === "viewer" ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
                     borderRadius: "8px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -650,10 +650,10 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                   />
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <strong style={{ fontSize: "0.875rem", color: "#f4f4f5" }}>Viewer</strong>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--foreground, #f4f4f5)" }}>Viewer</strong>
                       <Badge variant="outline" size="sm">Read-Only</Badge>
                     </div>
-                    <p style={{ fontSize: "0.75rem", color: "#a1a1aa", margin: "2px 0 0" }}>
+                    <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", margin: "2px 0 0" }}>
                       Can view designs. Cannot create, edit, modify, or delete any designs.
                     </p>
                   </div>
@@ -666,8 +666,8 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                     alignItems: "flex-start",
                     gap: "0.75rem",
                     padding: "0.875rem",
-                    backgroundColor: inviteRole === "admin" ? "rgba(59, 130, 246, 0.08)" : "#141417",
-                    border: `1px solid ${inviteRole === "admin" ? "#3b82f6" : "#27272a"}`,
+                    backgroundColor: inviteRole === "admin" ? "rgba(16, 185, 129, 0.08)" : "var(--surface, #141417)",
+                    border: `1px solid ${inviteRole === "admin" ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
                     borderRadius: "8px",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
@@ -683,10 +683,10 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                   />
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <strong style={{ fontSize: "0.875rem", color: "#f4f4f5" }}>Admin</strong>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--foreground, #f4f4f5)" }}>Admin</strong>
                       <Badge variant="warning" size="sm">Management</Badge>
                     </div>
-                    <p style={{ fontSize: "0.75rem", color: "#a1a1aa", margin: "2px 0 0" }}>
+                    <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", margin: "2px 0 0" }}>
                       Full editing privileges plus ability to invite and manage members.
                     </p>
                   </div>
@@ -714,19 +714,19 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                   flexDirection: "column",
                   gap: "0.625rem",
                   padding: "1rem",
-                  backgroundColor: "#18181b",
-                  border: "1px solid #3b82f6",
+                  backgroundColor: "var(--surface, #18181b)",
+                  border: "1px solid var(--primary, #10b981)",
                   borderRadius: "8px",
                   marginTop: "0.5rem",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Sparkles size={16} style={{ color: "#3b82f6" }} />
-                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#f4f4f5" }}>
+                  <Sparkles size={16} style={{ color: "var(--primary, #10b981)" }} />
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--foreground, #f4f4f5)" }}>
                     Invitation Link Ready
                   </span>
                 </div>
-                <p style={{ fontSize: "0.75rem", color: "#a1a1aa", margin: 0 }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)", margin: 0 }}>
                   Share this secure single-use invitation link with the recipient. They will need to log in with their matching email to accept.
                 </p>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -736,12 +736,12 @@ export const WorkspaceSettingsDialog: React.FC<WorkspaceSettingsDialogProps> = (
                     value={generatedInviteLink}
                     style={{
                       flex: 1,
-                      backgroundColor: "#09090b",
-                      border: "1px solid #27272a",
+                      backgroundColor: "var(--input-bg, #09090b)",
+                      border: "1px solid var(--border, #27272a)",
                       borderRadius: "6px",
                       padding: "6px 10px",
                       fontSize: "0.75rem",
-                      color: "#93c5fd",
+                      color: "var(--foreground, #6ee7b7)",
                       fontFamily: "monospace",
                     }}
                   />

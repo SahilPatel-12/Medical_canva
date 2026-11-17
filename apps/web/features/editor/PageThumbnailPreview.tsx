@@ -1,13 +1,16 @@
 "use client";
 
 import React from "react";
-import { Page, DesignElement } from "@design-platform/types";
+import { Page, DesignElement, LineCap } from "@design-platform/types";
+import { isPolygonShape, polygonPoints } from "@design-platform/editor";
 
 interface PageThumbnailPreviewProps {
   page: Page;
   docWidth: number;
   docHeight: number;
   backgroundColor: string;
+  /** Ignore the stored low-res thumbnail and draw the page as vectors (crisp at any size) */
+  preferVector?: boolean;
 }
 
 export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
@@ -15,9 +18,10 @@ export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
   docWidth,
   docHeight,
   backgroundColor,
+  preferVector = false,
 }) => {
   // If a high-res exported data URL is available, render that image
-  if (page.thumbnail) {
+  if (page.thumbnail && !preferVector) {
     return (
       <img
         src={page.thumbnail}
@@ -72,12 +76,39 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
 
   if (type === "shape") {
     const shapeProps = properties as {
-      shapeType?: "rectangle" | "circle" | "line";
+      shapeType?: string;
       fill?: string;
       stroke?: string;
       strokeWidth?: number;
       cornerRadius?: number;
+      dash?: "solid" | "dashed" | "dotted";
+      startCap?: LineCap;
+      endCap?: LineCap;
+      flipX?: boolean;
+      flipY?: boolean;
     };
+    const fill = shapeProps.fill === "transparent" ? "none" : shapeProps.fill || "#3b82f6";
+    const outline = shapeProps.stroke && shapeProps.stroke !== "transparent" ? shapeProps.stroke : undefined;
+
+    if (isPolygonShape(shapeProps.shapeType)) {
+      // Mirrored shapes reflect their outline inside the box (as on the canvas)
+      const pts = polygonPoints(shapeProps.shapeType, width, height)
+        .map((v, i) =>
+          i % 2 === 0 ? x + (shapeProps.flipX ? width - v : v) : y + (shapeProps.flipY ? height - v : v)
+        )
+        .join(" ");
+      return (
+        <polygon
+          points={pts}
+          fill={fill}
+          stroke={outline}
+          strokeWidth={outline ? shapeProps.strokeWidth : 0}
+          strokeLinejoin="round"
+          opacity={elOpacity}
+          transform={transform}
+        />
+      );
+    }
 
     if (shapeProps.shapeType === "circle") {
       const rx = width / 2;
@@ -88,7 +119,7 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
           cy={y + ry}
           rx={rx}
           ry={ry}
-          fill={shapeProps.fill || "#3b82f6"}
+          fill={fill}
           stroke={shapeProps.stroke}
           strokeWidth={shapeProps.strokeWidth}
           opacity={elOpacity}
@@ -98,17 +129,33 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
     }
 
     if (shapeProps.shapeType === "line") {
+      const color = shapeProps.fill || "#3b82f6";
+      const sw = shapeProps.strokeWidth || 4;
+      const head = Math.max(8, sw * 3);
+      const cy = y + height / 2;
+      const cap = (c: LineCap | undefined, cx: number, dir: 1 | -1) =>
+        c === "arrow" ? (
+          <path d={`M${cx} ${cy} L${cx - dir * head} ${cy - head * 0.55} L${cx - dir * head} ${cy + head * 0.55} Z`} fill={color} />
+        ) : c === "bar" ? (
+          <rect x={dir === 1 ? cx - sw : cx} y={cy - head * 0.7} width={sw} height={head * 1.4} fill={color} />
+        ) : c === "dot" ? (
+          <circle cx={cx - dir * sw * 1.2} cy={cy} r={sw * 1.4} fill={color} />
+        ) : null;
       return (
-        <line
-          x1={x}
-          y1={y + height / 2}
-          x2={x + width}
-          y2={y + height / 2}
-          stroke={shapeProps.stroke || shapeProps.fill || "#3b82f6"}
-          strokeWidth={shapeProps.strokeWidth || 4}
-          opacity={elOpacity}
-          transform={transform}
-        />
+        <g opacity={elOpacity} transform={transform}>
+          <line
+            x1={x + (shapeProps.startCap === "arrow" ? head * 0.8 : 0)}
+            y1={cy}
+            x2={x + width - (shapeProps.endCap === "arrow" ? head * 0.8 : 0)}
+            y2={cy}
+            stroke={color}
+            strokeWidth={sw}
+            strokeDasharray={shapeProps.dash === "dashed" ? `${sw * 3} ${sw * 2}` : shapeProps.dash === "dotted" ? `0.01 ${sw * 2}` : undefined}
+            strokeLinecap={shapeProps.dash === "dotted" ? "round" : "butt"}
+          />
+          {cap(shapeProps.startCap, x, -1)}
+          {cap(shapeProps.endCap, x + width, 1)}
+        </g>
       );
     }
 
@@ -120,7 +167,7 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
         height={height}
         rx={shapeProps.cornerRadius || 0}
         ry={shapeProps.cornerRadius || 0}
-        fill={shapeProps.fill || "#3b82f6"}
+        fill={fill}
         stroke={shapeProps.stroke}
         strokeWidth={shapeProps.strokeWidth}
         opacity={elOpacity}
@@ -156,17 +203,23 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
   }
 
   if (type === "image") {
-    const imgProps = properties as { url?: string };
-    if (imgProps.url) {
+    const imgProps = properties as { url?: string; src?: string; originalSrc?: string; flipX?: boolean; flipY?: boolean };
+    const href = imgProps.src || imgProps.originalSrc || imgProps.url;
+    if (href) {
+      // Mirrored photo: reflect around the image's own center, inside the element transform
+      const mirror =
+        imgProps.flipX || imgProps.flipY
+          ? ` translate(${x + width / 2} ${y + height / 2}) scale(${imgProps.flipX ? -1 : 1} ${imgProps.flipY ? -1 : 1}) translate(${-(x + width / 2)} ${-(y + height / 2)})`
+          : "";
       return (
         <image
-          href={imgProps.url}
+          href={href}
           x={x}
           y={y}
           width={width}
           height={height}
           opacity={elOpacity}
-          transform={transform}
+          transform={`${transform || ""}${mirror}`.trim() || undefined}
           preserveAspectRatio="xMidYMid slice"
         />
       );
@@ -177,12 +230,20 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
     const svgProps = properties as { svgContent?: string; originalSvg?: string; fill?: string };
     const rawSvg = svgProps.svgContent || svgProps.originalSvg;
     if (rawSvg) {
-      // Clean SVG for embedding or placeholder box
+      // Drawn as an isolated image (scaled to the element box, no id clashes between copies)
+      const href = /^https?:\/\//.test(rawSvg)
+        ? rawSvg
+        : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(rawSvg)}`;
       return (
-        <g
-          transform={`${transform || ""} translate(${x}, ${y})`}
+        <image
+          href={href}
+          x={x}
+          y={y}
+          width={width}
+          height={height}
           opacity={elOpacity}
-          dangerouslySetInnerHTML={{ __html: rawSvg }}
+          transform={transform}
+          preserveAspectRatio="none"
         />
       );
     }

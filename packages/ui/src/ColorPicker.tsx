@@ -37,7 +37,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           style={{
             fontSize: "0.75rem",
             fontWeight: 600,
-            color: "#475569",
+            color: "var(--foreground-muted, #64748b)",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
           }}
@@ -54,7 +54,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             width: "30px",
             height: "30px",
             borderRadius: "6px",
-            border: "1px solid #cbd5e1",
+            border: "1px solid var(--border-strong, #cbd5e1)",
             overflow: "hidden",
             flexShrink: 0,
             boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05)",
@@ -84,15 +84,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           placeholder="#000000"
           style={{
             flex: 1,
-            backgroundColor: "#ffffff",
-            color: "#0f172a",
-            border: "1px solid #cbd5e1",
+            backgroundColor: "var(--input-bg, var(--surface, #ffffff))",
+            color: "var(--foreground, #0f172a)",
+            border: "1px solid var(--border-strong, #cbd5e1)",
             borderRadius: "6px",
             padding: "4px 8px",
             fontSize: "0.8125rem",
             fontFamily: "monospace",
             outline: "none",
-            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+            boxShadow: "var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04))",
           }}
         />
       </div>
@@ -119,7 +119,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                 aspectRatio: "1",
                 borderRadius: "4px",
                 backgroundColor: color,
-                border: isSelected ? "2px solid #2563eb" : "1px solid rgba(0, 0, 0, 0.15)",
+                border: isSelected ? "2px solid var(--primary, #047857)" : "1px solid rgba(0, 0, 0, 0.15)",
                 cursor: "pointer",
                 padding: 0,
                 outline: "none",

@@ -26,7 +26,6 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Hand,
   Copy,
   Trash2,
   Shield,
@@ -35,10 +34,6 @@ import {
   ArrowDown,
   Crosshair,
   SlidersHorizontal,
-  LibraryBig,
-  Type,
-  Shapes,
-  Upload,
 } from "lucide-react";
 
 export interface ShareClientProps {
@@ -98,12 +93,12 @@ export function ShareClient({ token }: { token: string }) {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          backgroundColor: "#09090b",
-          color: "#a1a1aa",
+          backgroundColor: "var(--background, #09090b)",
+          color: "var(--muted-foreground, #a1a1aa)",
           gap: "1rem",
         }}
       >
-        <Loader2 size={32} className="animate-spin" style={{ color: "#3b82f6" }} />
+        <Loader2 size={32} className="animate-spin" style={{ color: "var(--primary, #10b981)" }} />
         <span style={{ fontSize: "0.875rem" }}>Opening shared design...</span>
       </div>
     );
@@ -118,8 +113,8 @@ export function ShareClient({ token }: { token: string }) {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          backgroundColor: "#09090b",
-          color: "#f4f4f5",
+          backgroundColor: "var(--background, #09090b)",
+          color: "var(--foreground, #f4f4f5)",
           padding: "2rem",
           textAlign: "center",
         }}
@@ -377,8 +372,8 @@ function SharedViewerStudio({
       {isEditorLink && !isAuthenticated && (
         <div
           style={{
-            backgroundColor: "rgba(59, 130, 246, 0.15)",
-            borderBottom: "1px solid rgba(59, 130, 246, 0.3)",
+            backgroundColor: "rgba(16, 185, 129, 0.15)",
+            borderBottom: "1px solid rgba(16, 185, 129, 0.3)",
             padding: "8px 16px",
             display: "flex",
             alignItems: "center",
@@ -388,7 +383,7 @@ function SharedViewerStudio({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Sparkles size={16} style={{ color: "#3b82f6" }} />
+            <Sparkles size={16} style={{ color: "#10b981" }} />
             <span style={{ fontSize: "13px", color: "#e4e4e7" }}>
               You have been granted <strong>Editor access</strong> to this design. Sign in to start collaborating live.
             </span>
@@ -412,8 +407,8 @@ function SharedViewerStudio({
       <header
         style={{
           height: "56px",
-          backgroundColor: "#0d0d10",
-          borderBottom: "1px solid #27272a",
+          backgroundColor: "var(--surface, #0d0d10)",
+          borderBottom: "1px solid var(--border, #27272a)",
           padding: "0 1.25rem",
           display: "flex",
           alignItems: "center",
@@ -429,7 +424,7 @@ function SharedViewerStudio({
                 width: "28px",
                 height: "28px",
                 borderRadius: "7px",
-                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                background: "linear-gradient(135deg, #10b981, #065f46)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -444,7 +439,7 @@ function SharedViewerStudio({
               style={{
                 fontSize: "0.9375rem",
                 fontWeight: 600,
-                color: "#f4f4f5",
+                color: "var(--foreground, #f4f4f5)",
                 margin: 0,
                 maxWidth: "280px",
                 overflow: "hidden",
@@ -467,10 +462,10 @@ function SharedViewerStudio({
             display: "flex",
             alignItems: "center",
             gap: "2px",
-            backgroundColor: "#141417",
+            backgroundColor: "var(--surface-hover, #141417)",
             padding: "2px",
             borderRadius: "8px",
-            border: "1px solid #27272a",
+            border: "1px solid var(--border, #27272a)",
           }}
         >
           <Button
@@ -486,7 +481,7 @@ function SharedViewerStudio({
             style={{
               fontSize: "12px",
               fontWeight: 600,
-              color: "#e4e4e7",
+              color: "var(--foreground, #e4e4e7)",
               padding: "0 8px",
               minWidth: "48px",
               textAlign: "center",
@@ -516,7 +511,7 @@ function SharedViewerStudio({
 
         {/* Right side info */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: "12px", color: "#71717a" }}>
+          <span style={{ fontSize: "12px", color: "var(--muted-foreground, #71717a)" }}>
             Anyone with the link • Read-only
           </span>
         </div>
@@ -526,8 +521,8 @@ function SharedViewerStudio({
       <div
         style={{
           flex: 1,
-          backgroundColor: "#111114",
-          backgroundImage: "radial-gradient(circle, #27272a 1px, transparent 1px)",
+          backgroundColor: "var(--canvas-bg, #111114)",
+          backgroundImage: "radial-gradient(circle, var(--canvas-dot, #27272a) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
           position: "relative",
           overflow: "hidden",
@@ -538,52 +533,26 @@ function SharedViewerStudio({
       >
         <div ref={containerRef} style={{ width: "100%", height: "100%", outline: "none", cursor: "grab" }} />
 
-        {/* Navigation Hint */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "16px",
-            left: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            backgroundColor: "rgba(18, 18, 21, 0.8)",
-            backdropFilter: "blur(8px)",
-            padding: "5px 10px",
-            borderRadius: "8px",
-            border: "1px solid rgba(39, 39, 42, 0.7)",
-            fontSize: "11px",
-            color: "#a1a1aa",
-            pointerEvents: "none",
-            userSelect: "none",
+        {/* Floating canvas controls: notes · pages · zoom */}
+        <EditorBottomBar
+          document={doc}
+          pages={pages}
+          activePageIndex={activePageIndex}
+          zoom={zoom}
+          onSelectPage={handleSelectPage}
+          onAddPage={() => {}}
+          onSetZoom={(newZoom) => {
+            setZoom(newZoom);
+            engineRef.current?.setZoom(newZoom);
           }}
-        >
-          <Hand size={13} style={{ color: "#3b82f6" }} />
-          <span>Scroll / Pinch to zoom • Drag anywhere to pan</span>
-        </div>
+          onZoomIn={() => engineRef.current?.zoomIn()}
+          onZoomOut={() => engineRef.current?.zoomOut()}
+          onFitToScreen={() => engineRef.current?.fitToScreen()}
+          onResetZoom={() => engineRef.current?.resetZoom()}
+          onOpenGridView={() => setIsGridViewOpen(true)}
+          isReadOnly={true}
+        />
       </div>
-
-      {/* Canva Bottom Bar for Viewer */}
-      <EditorBottomBar
-        document={doc}
-        pages={pages}
-        activePageIndex={activePageIndex}
-        zoom={zoom}
-        onSelectPage={handleSelectPage}
-        onAddPage={() => {}}
-        onDuplicatePage={() => {}}
-        onDeletePage={() => {}}
-        onSetZoom={(newZoom) => {
-          setZoom(newZoom);
-          engineRef.current?.setZoom(newZoom);
-        }}
-        onZoomIn={() => engineRef.current?.zoomIn()}
-        onZoomOut={() => engineRef.current?.zoomOut()}
-        onFitToScreen={() => engineRef.current?.fitToScreen()}
-        onResetZoom={() => engineRef.current?.resetZoom()}
-        onOpenGridView={() => setIsGridViewOpen(true)}
-        isReadOnly={true}
-      />
 
       {/* Canva Grid View Modal for Viewer */}
       <EditorGridViewModal
@@ -650,6 +619,7 @@ function SharedEditorStudio({
     updateSelectedSvgColorMap,
     resetSelectedSvgColors,
     setCanvasBackgroundColor,
+    setPageBackgroundColor,
     exportImage,
     renameDocument,
     undo,
@@ -736,7 +706,7 @@ function SharedEditorStudio({
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--background, #ffffff)",
         overflow: "hidden",
       }}
     >
@@ -814,6 +784,7 @@ function SharedEditorStudio({
             onUpdateSvgColorMap={updateSelectedSvgColorMap}
             onResetSvgColors={resetSelectedSvgColors}
             onSetCanvasBackground={setCanvasBackgroundColor}
+            onSetPageBackground={(color) => setPageBackgroundColor(color)}
           />
         ) : null}
 
@@ -821,8 +792,8 @@ function SharedEditorStudio({
         <div
           style={{
             flex: 1,
-            backgroundColor: "#eef2f6",
-            backgroundImage: "radial-gradient(circle, #cbd5e1 1.25px, transparent 1.25px)",
+            backgroundColor: "var(--canvas-bg, #eef2f6)",
+            backgroundImage: "radial-gradient(circle, var(--canvas-dot, #cbd5e1) 1.25px, transparent 1.25px)",
             backgroundSize: "24px 24px",
             position: "relative",
             overflow: "hidden",
@@ -832,148 +803,6 @@ function SharedEditorStudio({
           }}
         >
           <div ref={containerRef} style={{ width: "100%", height: "100%", outline: "none" }} />
-
-          {/* Empty Artboard Subtle Guidance Card (vanishing once content is added) */}
-          {(!currentElements || currentElements.length === 0) && !isReadOnly && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                backdropFilter: "blur(12px)",
-                padding: "2rem 2.5rem",
-                borderRadius: "16px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-                maxWidth: "460px",
-                pointerEvents: "auto",
-                zIndex: 25,
-                userSelect: "none",
-              }}
-            >
-              <div
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "14px",
-                  backgroundColor: "#eff6ff",
-                  border: "1px solid #bfdbfe",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#2563eb",
-                  marginBottom: "1rem",
-                }}
-              >
-                <Sparkles size={24} />
-              </div>
-              <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0f172a", margin: "0 0 0.375rem" }}>
-                Start your scientific illustration
-              </h3>
-              <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.25rem", lineHeight: 1.5 }}>
-                Add a scientific illustration from the library, insert text or shapes, or upload your own files.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", width: "100%" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelTab("assets");
-                    setIsLeftPanelCollapsed(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#2563eb",
-                    color: "#ffffff",
-                    border: "none",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(37, 99, 235, 0.2)",
-                  }}
-                >
-                  <LibraryBig size={14} />
-                  <span>Browse Assets</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addText("heading")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Type size={14} />
-                  <span>Add Text</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addShape("rectangle")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Shapes size={14} />
-                  <span>Add Shape</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeftPanelTab("uploads");
-                    setIsLeftPanelCollapsed(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#f8fafc",
-                    color: "#334155",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Upload size={14} />
-                  <span>Upload File</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Floating Element Quick-Action Bar for Selected Element */}
           {selectedElement && !isReadOnly && (
@@ -986,11 +815,11 @@ function SharedEditorStudio({
                 display: "flex",
                 alignItems: "center",
                 gap: "3px",
-                backgroundColor: "rgba(255, 255, 255, 0.96)",
+                backgroundColor: "var(--surface, rgba(255, 255, 255, 0.96))",
                 backdropFilter: "blur(12px)",
                 padding: "4px 8px",
                 borderRadius: "10px",
-                border: "1px solid #e2e8f0",
+                border: "1px solid var(--border, #e2e8f0)",
                 boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
                 zIndex: 30,
                 userSelect: "none",
@@ -1000,7 +829,7 @@ function SharedEditorStudio({
                 style={{
                   fontSize: "12px",
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground, #0f172a)",
                   padding: "0 6px",
                   maxWidth: "140px",
                   overflow: "hidden",
@@ -1011,7 +840,7 @@ function SharedEditorStudio({
                 {selectedElement.name || selectedElement.type}
               </span>
 
-              <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }} />
+              <div style={{ width: "1px", height: "16px", backgroundColor: "var(--border, #e2e8f0)" }} />
 
               {/* Edit Properties Button */}
               <button
@@ -1026,17 +855,17 @@ function SharedEditorStudio({
                   alignItems: "center",
                   gap: "4px",
                   padding: "4px 8px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
+                  background: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
                   borderRadius: "6px",
-                  color: "#2563eb",
+                  color: "#047857",
                   fontSize: "11px",
                   fontWeight: 600,
                   cursor: "pointer",
                   transition: "background-color 0.1s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#dbeafe")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#d1fae5")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#ecfdf5")}
               >
                 <SlidersHorizontal size={13} />
                 <span>Edit</span>
@@ -1054,15 +883,15 @@ function SharedEditorStudio({
                   background: "transparent",
                   border: "none",
                   borderRadius: "6px",
-                  color: "#334155",
+                  color: "var(--foreground, #334155)",
                   fontSize: "11px",
                   fontWeight: 500,
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                <Copy size={13} style={{ color: "#2563eb" }} />
+                <Copy size={13} style={{ color: "var(--primary, #047857)" }} />
                 <span>Copy</span>
               </button>
 
@@ -1077,10 +906,10 @@ function SharedEditorStudio({
                   background: "transparent",
                   border: "none",
                   borderRadius: "6px",
-                  color: "#475569",
+                  color: "var(--muted-foreground, #475569)",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 <ArrowUp size={13} />
@@ -1097,10 +926,10 @@ function SharedEditorStudio({
                   background: "transparent",
                   border: "none",
                   borderRadius: "6px",
-                  color: "#475569",
+                  color: "var(--muted-foreground, #475569)",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 <ArrowDown size={13} />
@@ -1127,16 +956,16 @@ function SharedEditorStudio({
                   background: "transparent",
                   border: "none",
                   borderRadius: "6px",
-                  color: "#2563eb",
+                  color: "var(--primary, #047857)",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eff6ff")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover, #ecfdf5)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 <Crosshair size={13} />
               </button>
 
-              <div style={{ width: "1px", height: "16px", backgroundColor: "#e2e8f0" }} />
+              <div style={{ width: "1px", height: "16px", backgroundColor: "var(--border, #e2e8f0)" }} />
 
               <button
                 type="button"
@@ -1156,7 +985,7 @@ function SharedEditorStudio({
                   cursor: "pointer",
                 }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#fee2e2")
+                  (e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)")
                 }
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
@@ -1166,52 +995,24 @@ function SharedEditorStudio({
             </div>
           )}
 
-          {/* Floating Navigation Hint */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "16px",
-              left: "16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              backdropFilter: "blur(8px)",
-              padding: "5px 10px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              fontSize: "11px",
-              color: "#64748b",
-              pointerEvents: "none",
-              userSelect: "none",
-              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <Hand size={13} style={{ color: "#2563eb" }} />
-            <span>Scroll / Pinch to zoom • Hold Space to pan</span>
-          </div>
+          {/* Floating canvas controls: notes · pages · zoom */}
+          <EditorBottomBar
+            document={state.document}
+            pages={pages}
+            activePageIndex={activePageIndex}
+            zoom={state.zoom}
+            onSelectPage={setActivePage}
+            onAddPage={() => addPage()}
+            onSetZoom={setZoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onFitToScreen={fitToScreen}
+            onResetZoom={resetZoom}
+            onOpenGridView={() => setIsGridViewOpen(true)}
+            isReadOnly={isReadOnly}
+          />
         </div>
       </div>
-
-      {/* Canva Bottom Bar */}
-      <EditorBottomBar
-        document={state.document}
-        pages={pages}
-        activePageIndex={activePageIndex}
-        zoom={state.zoom}
-        onSelectPage={setActivePage}
-        onAddPage={() => addPage()}
-        onDuplicatePage={duplicatePage}
-        onDeletePage={deletePage}
-        onReorderPages={reorderPages}
-        onSetZoom={setZoom}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onFitToScreen={fitToScreen}
-        onResetZoom={resetZoom}
-        onOpenGridView={() => setIsGridViewOpen(true)}
-        isReadOnly={isReadOnly}
-      />
 
       {/* Canva Grid View Modal */}
       <EditorGridViewModal

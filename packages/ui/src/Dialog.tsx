@@ -66,10 +66,10 @@ export const Dialog: React.FC<DialogProps> = ({
         style={{
           width: "100%",
           maxWidth,
-          backgroundColor: "#18181b",
-          border: "1px solid #27272a",
+          backgroundColor: "var(--surface, #ffffff)",
+          border: "1px solid var(--border, #e2e8f0)",
           borderRadius: "14px",
-          boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.7)",
+          boxShadow: "var(--shadow-float, 0 20px 40px -15px rgba(0, 0, 0, 0.4))",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -83,16 +83,16 @@ export const Dialog: React.FC<DialogProps> = ({
             alignItems: "flex-start",
             justifyContent: "space-between",
             padding: "1.25rem 1.5rem",
-            borderBottom: "1px solid #27272a",
+            borderBottom: "1px solid var(--border, #e2e8f0)",
           }}
         >
           <div>
-            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#f4f4f5", margin: 0 }}>
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--foreground, #0f172a)", margin: 0 }}>
               {title}
             </h2>
             {description && (
               <p
-                style={{ fontSize: "0.8125rem", color: "#a1a1aa", marginTop: "0.25rem", margin: 0 }}
+                style={{ fontSize: "0.8125rem", color: "var(--foreground-muted, #64748b)", marginTop: "0.25rem", margin: 0 }}
               >
                 {description}
               </p>
@@ -103,7 +103,7 @@ export const Dialog: React.FC<DialogProps> = ({
             size="xs"
             onClick={onClose}
             aria-label="Close dialog"
-            style={{ padding: "4px", color: "#71717a" }}
+            style={{ padding: "4px", color: "var(--foreground-muted, #64748b)" }}
           >
             <X size={18} />
           </Button>
@@ -123,8 +123,8 @@ export const Dialog: React.FC<DialogProps> = ({
               justifyContent: "flex-end",
               gap: "0.75rem",
               padding: "1rem 1.5rem",
-              borderTop: "1px solid #27272a",
-              backgroundColor: "#121214",
+              borderTop: "1px solid var(--border, #e2e8f0)",
+              backgroundColor: "var(--surface-muted, #f8fafc)",
             }}
           >
             {footer}

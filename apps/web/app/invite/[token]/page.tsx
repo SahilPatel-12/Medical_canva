@@ -6,9 +6,9 @@ import Link from "next/link";
 import { useAuth, getBrowserSupabaseClient } from "@design-platform/auth";
 import { SupabaseWorkspaceRepository } from "@design-platform/database";
 import { InvitationDetails } from "@design-platform/types";
-import { Button, Badge } from "@design-platform/ui";
+import { AuthShell, authStyles as styles } from "../../../features/auth/AuthShell";
 import {
-  Sparkles,
+  Loader2,
   Users,
   CheckCircle2,
   AlertTriangle,
@@ -87,327 +87,157 @@ export default function InviteAcceptancePage({ params }: InvitePageProps) {
 
   const handleSignOutAndSwitch = async () => {
     await signOut();
-    router.push(`/login?redirect=/invite/${token}`);
+    router.push(`/login?redirectTo=${encodeURIComponent(`/invite/${token}`)}`);
   };
 
   const userEmail = user?.email?.toLowerCase().trim();
   const invitedEmail = invitation?.email?.toLowerCase().trim();
   const isEmailMatch = userEmail && invitedEmail && userEmail === invitedEmail;
 
+  const loginHref = `/login?redirectTo=${encodeURIComponent(`/invite/${token}`)}`;
+  const signupHref = `/signup?redirectTo=${encodeURIComponent(`/invite/${token}`)}`;
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#09090b",
-        color: "#f4f4f5",
-        padding: "1.5rem",
-        fontFamily: "inherit",
-      }}
+    <AuthShell
+      brandTitle={
+        <>
+          Your team is <span>waiting for you</span>
+        </>
+      }
+      brandLead="Join a shared BioCanvas workspace to design figures, slides and patient materials together."
+      benefits={["See and edit your team’s designs", "Real-time editing with your team", "Roles keep unpublished work private"]}
     >
-      {/* Brand Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "2rem" }}>
-        <div
-          style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#ffffff",
-            boxShadow: "0 2px 10px rgba(59, 130, 246, 0.4)",
-          }}
-        >
-          <Sparkles size={20} />
+      {(isLoadingDetails || isAuthLoading) && (
+        <div className={styles.loadingRow} role="status">
+          <Loader2 size={20} className={styles.spin} /> Checking your invitation…
         </div>
-        <span style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "-0.02em", color: "#f4f4f5" }}>
-          BioCanvas
-        </span>
-      </div>
+      )}
 
-      {/* Main Card */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "480px",
-          backgroundColor: "#141417",
-          border: "1px solid #27272a",
-          borderRadius: "16px",
-          padding: "2rem",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
-        }}
-      >
-        {/* Loading State */}
-        {(isLoadingDetails || isAuthLoading) && (
-          <div style={{ textAlign: "center", padding: "2rem 0", color: "#71717a" }}>
-            <p style={{ margin: 0, fontSize: "0.875rem" }}>Verifying invitation details...</p>
+      {/* Invalid / not found */}
+      {!isLoadingDetails && errorMessage && !invitation && (
+        <>
+          <div className={`${styles.stateIcon} ${styles.stateError}`}>
+            <XCircle size={28} />
           </div>
-        )}
-
-        {/* Error / Invalid State */}
-        {!isLoadingDetails && errorMessage && !invitation && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1rem" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(239, 68, 68, 0.1)",
-                color: "#ef4444",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <XCircle size={24} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: "0 0 0.5rem" }}>
-                Invitation Invalid
-              </h2>
-              <p style={{ fontSize: "0.8125rem", color: "#a1a1aa", margin: 0 }}>
-                {errorMessage}
-              </p>
-            </div>
-            <Link href="/files" style={{ textDecoration: "none", width: "100%" }}>
-              <Button variant="secondary" size="md" style={{ width: "100%" }}>
-                Return to My Files
-              </Button>
+          <h1 className={styles.title}>Invitation not valid</h1>
+          <p className={styles.subtitle}>{errorMessage}</p>
+          <div className={styles.stack}>
+            <Link href="/files" className={styles.secondary}>
+              Go to my designs
             </Link>
           </div>
-        )}
+        </>
+      )}
 
-        {/* Expired State */}
-        {!isLoadingDetails && invitation && invitation.status === "expired" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1rem" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(234, 179, 8, 0.1)",
-                color: "#eab308",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <AlertTriangle size={24} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: "0 0 0.5rem" }}>
-                Invitation Expired
-              </h2>
-              <p style={{ fontSize: "0.8125rem", color: "#a1a1aa", margin: 0 }}>
-                This invitation to join <strong>{invitation.workspaceName}</strong> expired on {new Date(invitation.expiresAt).toLocaleDateString()}. Please request a new invitation from the workspace administrator.
-              </p>
-            </div>
-            <Link href="/files" style={{ textDecoration: "none", width: "100%" }}>
-              <Button variant="secondary" size="md" style={{ width: "100%" }}>
-                Return to My Files
-              </Button>
+      {/* Expired */}
+      {!isLoadingDetails && invitation && invitation.status === "expired" && (
+        <>
+          <div className={`${styles.stateIcon} ${styles.stateWarn}`}>
+            <AlertTriangle size={28} />
+          </div>
+          <h1 className={styles.title}>This invitation has expired</h1>
+          <p className={styles.subtitle}>
+            The invitation to join <strong>{invitation.workspaceName}</strong> expired on{" "}
+            {new Date(invitation.expiresAt).toLocaleDateString()}. Ask a workspace admin to send you a new one.
+          </p>
+          <div className={styles.stack}>
+            <Link href="/files" className={styles.secondary}>
+              Go to my designs
             </Link>
           </div>
-        )}
+        </>
+      )}
 
-        {/* Success Accepted State */}
-        {successAccepted && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1rem" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(34, 197, 94, 0.1)",
-                color: "#22c55e",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckCircle2 size={24} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: "0 0 0.5rem" }}>
-                Welcome to {invitation?.workspaceName}!
-              </h2>
-              <p style={{ fontSize: "0.8125rem", color: "#a1a1aa", margin: 0 }}>
-                You have successfully joined as an <strong>{invitation?.role}</strong>. Redirecting to workspace designs...
-              </p>
-            </div>
+      {/* Accepted */}
+      {successAccepted && (
+        <>
+          <div className={`${styles.stateIcon} ${styles.stateNeutral}`}>
+            <CheckCircle2 size={28} />
           </div>
-        )}
+          <h1 className={styles.title}>Welcome to {invitation?.workspaceName}!</h1>
+          <p className={styles.subtitle}>
+            You joined as <strong>{invitation?.role}</strong>. Taking you to the workspace designs…
+          </p>
+        </>
+      )}
 
-        {/* Valid Pending Invitation View */}
-        {!isLoadingDetails && invitation && invitation.status === "pending" && !successAccepted && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            {/* Header info */}
-            <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "12px",
-                  backgroundColor: "#27272a",
-                  color: "#3b82f6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 1rem",
-                }}
-              >
-                <Users size={24} />
-              </div>
-              <h1 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0 0 0.5rem", color: "#f4f4f5" }}>
-                Join {invitation.workspaceName}
-              </h1>
-              <p style={{ fontSize: "0.8125rem", color: "#a1a1aa", margin: 0 }}>
-                You have been invited to collaborate with the role of:
-              </p>
-              <div style={{ marginTop: "0.75rem" }}>
-                <Badge
-                  variant={
-                    invitation.role === "admin"
-                      ? "warning"
-                      : invitation.role === "editor"
-                      ? "success"
-                      : "outline"
-                  }
-                  size="md"
-                >
-                  {invitation.role.toUpperCase()}
-                </Badge>
-              </div>
+      {/* Pending invitation */}
+      {!isLoadingDetails && !isAuthLoading && invitation && invitation.status === "pending" && !successAccepted && (
+        <>
+          <div className={`${styles.stateIcon} ${styles.stateNeutral}`}>
+            <Users size={28} />
+          </div>
+          <h1 className={styles.title}>Join {invitation.workspaceName}</h1>
+          <p className={styles.subtitle}>You’ve been invited to collaborate in this BioCanvas workspace.</p>
+          <span className={styles.roleBadge}>
+            <ShieldCheck size={15} /> {invitation.role}
+          </span>
+
+          {errorMessage && (
+            <div className={`${styles.alert} ${styles.alertError}`} role="alert" style={{ marginTop: 22 }}>
+              <AlertTriangle size={18} />
+              <span>{errorMessage}</span>
             </div>
+          )}
 
-            {/* Error Message inside Card */}
-            {errorMessage && (
-              <div
-                style={{
-                  padding: "0.75rem 1rem",
-                  backgroundColor: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "8px",
-                  color: "#f87171",
-                  fontSize: "0.8125rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <AlertTriangle size={16} />
-                <span>{errorMessage}</span>
+          {!user && (
+            <>
+              <div className={styles.note}>
+                This invitation was sent to <strong>{invitation.email}</strong>. Log in or create an account with that email to accept it.
               </div>
-            )}
-
-            {/* Scenario A: User Not Signed In */}
-            {!user && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div
-                  style={{
-                    padding: "0.875rem",
-                    backgroundColor: "#18181b",
-                    border: "1px solid #27272a",
-                    borderRadius: "8px",
-                    fontSize: "0.8125rem",
-                    color: "#a1a1aa",
-                  }}
-                >
-                  This invitation was sent to <strong style={{ color: "#f4f4f5" }}>{invitation.email}</strong>. Please sign in with this email to accept.
-                </div>
-                <Link
-                  href={`/login?redirect=/invite/${token}`}
-                  style={{ textDecoration: "none", width: "100%" }}
-                >
-                  <Button variant="primary" size="md" style={{ width: "100%" }} icon={<Mail size={16} />}>
-                    Sign In to Accept
-                  </Button>
+              <div className={styles.stack}>
+                <Link href={loginHref} className={styles.submitLink}>
+                  <Mail size={18} /> Log in to accept
                 </Link>
-                <Link
-                  href={`/signup?redirect=/invite/${token}`}
-                  style={{ textDecoration: "none", width: "100%" }}
-                >
-                  <Button variant="secondary" size="md" style={{ width: "100%" }}>
-                    Create Account
-                  </Button>
+                <Link href={signupHref} className={styles.secondary}>
+                  Create an account
                 </Link>
               </div>
-            )}
+            </>
+          )}
 
-            {/* Scenario B: User Signed In with Matching Email */}
-            {user && isEmailMatch && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div
-                  style={{
-                    padding: "0.875rem",
-                    backgroundColor: "rgba(34, 197, 94, 0.08)",
-                    border: "1px solid rgba(34, 197, 94, 0.25)",
-                    borderRadius: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.625rem",
-                  }}
-                >
-                  <ShieldCheck size={18} style={{ color: "#22c55e", flexShrink: 0 }} />
-                  <span style={{ fontSize: "0.8125rem", color: "#dcfce7" }}>
-                    Verified as <strong>{user.email}</strong>. Ready to accept!
-                  </span>
-                </div>
-
-                <Button
-                  variant="primary"
-                  size="md"
+          {user && isEmailMatch && (
+            <>
+              <div className={styles.note}>
+                Signed in as <strong>{user.email}</strong> — you’re all set.
+              </div>
+              <div className={styles.stack}>
+                <button
+                  type="button"
                   id="accept-invitation-btn"
+                  className={styles.submit}
+                  style={{ marginTop: 0 }}
                   disabled={isAccepting}
                   onClick={handleAccept}
-                  style={{ width: "100%" }}
-                  icon={<ArrowRight size={16} />}
                 >
-                  {isAccepting ? "Joining Workspace..." : "Accept Invitation & Join Workspace"}
-                </Button>
+                  {isAccepting ? (
+                    <>
+                      <Loader2 size={18} className={styles.spin} /> Joining…
+                    </>
+                  ) : (
+                    <>
+                      Accept & join workspace <ArrowRight size={18} />
+                    </>
+                  )}
+                </button>
               </div>
-            )}
+            </>
+          )}
 
-            {/* Scenario C: User Signed In with Different Email (Mismatch) */}
-            {user && !isEmailMatch && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div
-                  style={{
-                    padding: "0.875rem",
-                    backgroundColor: "rgba(234, 179, 8, 0.08)",
-                    border: "1px solid rgba(234, 179, 8, 0.25)",
-                    borderRadius: "8px",
-                    fontSize: "0.8125rem",
-                    color: "#fef08a",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  This invitation is for <strong style={{ color: "#ffffff" }}>{invitation.email}</strong>, but you are currently signed in as <strong style={{ color: "#ffffff" }}>{user.email}</strong>.
-                </div>
-
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={handleSignOutAndSwitch}
-                  id="switch-account-btn"
-                  style={{ width: "100%" }}
-                  icon={<LogOut size={16} />}
-                >
-                  Sign Out & Switch Account
-                </Button>
+          {user && !isEmailMatch && (
+            <>
+              <div className={styles.note}>
+                This invitation is for <strong>{invitation.email}</strong>, but you’re signed in as <strong>{user.email}</strong>.
               </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+              <div className={styles.stack}>
+                <button type="button" id="switch-account-btn" className={styles.secondary} onClick={handleSignOutAndSwitch}>
+                  <LogOut size={18} /> Sign out & switch account
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </AuthShell>
   );
 }

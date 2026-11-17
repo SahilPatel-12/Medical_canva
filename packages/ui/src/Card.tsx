@@ -15,8 +15,9 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       style={{
-        backgroundColor: "#18181b",
-        border: "1px solid #27272a",
+        backgroundColor: "var(--card-bg, var(--surface, #ffffff))",
+        border: "1px solid var(--border, #e2e8f0)",
+        color: "var(--foreground, #0f172a)",
         borderRadius: "12px",
         overflow: "hidden",
         transition: interactive

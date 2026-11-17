@@ -171,7 +171,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               color: "#a1a1aa",
             }}
           >
-            <Loader2 size={24} className="animate-spin" style={{ color: "#3b82f6" }} />
+            <Loader2 size={24} className="animate-spin" style={{ color: "#10b981" }} />
             <span style={{ fontSize: "0.8125rem" }}>Loading sharing preferences...</span>
           </div>
         ) : error && !shareLink ? (
@@ -198,8 +198,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             {/* General Access Box */}
             <div
               style={{
-                backgroundColor: "#111114",
-                border: "1px solid #27272a",
+                backgroundColor: "var(--surface, #111114)",
+                border: "1px solid var(--border, #27272a)",
                 borderRadius: "10px",
                 padding: "1rem",
                 display: "flex",
@@ -208,11 +208,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted-foreground, #71717a)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   General Access
                 </span>
                 {isUpdating && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#3b82f6" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--primary, #10b981)" }}>
                     <Loader2 size={12} className="animate-spin" />
                     <span>Updating...</span>
                   </div>
@@ -230,8 +230,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     justifyContent: "space-between",
                     padding: "0.75rem 0.875rem",
                     borderRadius: "8px",
-                    border: `1px solid ${!isLinkEnabled ? "#3b82f6" : "#27272a"}`,
-                    backgroundColor: !isLinkEnabled ? "rgba(59, 130, 246, 0.08)" : "#18181b",
+                    border: `1px solid ${!isLinkEnabled ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
+                    backgroundColor: !isLinkEnabled ? "rgba(16, 185, 129, 0.08)" : "var(--surface-hover, #18181b)",
                     cursor: isUpdating ? "not-allowed" : "pointer",
                     transition: "all 0.15s ease",
                   }}
@@ -242,20 +242,20 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                         width: "32px",
                         height: "32px",
                         borderRadius: "8px",
-                        backgroundColor: !isLinkEnabled ? "rgba(59, 130, 246, 0.2)" : "#27272a",
+                        backgroundColor: !isLinkEnabled ? "rgba(16, 185, 129, 0.2)" : "var(--surface, #27272a)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: !isLinkEnabled ? "#3b82f6" : "#a1a1aa",
+                        color: !isLinkEnabled ? "var(--primary, #10b981)" : "var(--muted-foreground, #a1a1aa)",
                       }}
                     >
                       <Lock size={16} />
                     </div>
                     <div>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "#f4f4f5" }}>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground, #f4f4f5)" }}>
                         Restricted
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)" }}>
                         Only workspace members can open this design
                       </div>
                     </div>
@@ -275,8 +275,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     gap: "0.75rem",
                     padding: "0.75rem 0.875rem",
                     borderRadius: "8px",
-                    border: `1px solid ${isLinkEnabled ? "#3b82f6" : "#27272a"}`,
-                    backgroundColor: isLinkEnabled ? "rgba(59, 130, 246, 0.08)" : "#18181b",
+                    border: `1px solid ${isLinkEnabled ? "var(--primary, #10b981)" : "var(--border, #27272a)"}`,
+                    backgroundColor: isLinkEnabled ? "rgba(16, 185, 129, 0.08)" : "var(--surface-hover, #18181b)",
                     transition: "all 0.15s ease",
                   }}
                 >
@@ -295,20 +295,20 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                           width: "32px",
                           height: "32px",
                           borderRadius: "8px",
-                          backgroundColor: isLinkEnabled ? "rgba(59, 130, 246, 0.2)" : "#27272a",
+                          backgroundColor: isLinkEnabled ? "rgba(16, 185, 129, 0.2)" : "var(--surface, #27272a)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: isLinkEnabled ? "#3b82f6" : "#a1a1aa",
+                          color: isLinkEnabled ? "var(--primary, #10b981)" : "var(--muted-foreground, #a1a1aa)",
                         }}
                       >
                         <Globe size={16} />
                       </div>
                       <div>
-                        <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "#f4f4f5" }}>
+                        <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground, #f4f4f5)" }}>
                           Anyone with the link
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>
+                        <div style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #a1a1aa)" }}>
                           Anyone with this enabled link can access
                         </div>
                       </div>
@@ -325,14 +325,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     <div
                       style={{
                         paddingTop: "0.625rem",
-                        borderTop: "1px solid rgba(39, 39, 42, 0.8)",
+                        borderTop: "1px solid var(--border, rgba(39, 39, 42, 0.8))",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
                         gap: "0.5rem",
                       }}
                     >
-                      <span style={{ fontSize: "0.8125rem", color: "#d4d4d8" }}>
+                      <span style={{ fontSize: "0.8125rem", color: "var(--foreground, #d4d4d8)" }}>
                         Link Permission:
                       </span>
 
@@ -341,9 +341,9 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          backgroundColor: "#0d0d10",
+                          backgroundColor: "var(--surface, #0d0d10)",
                           borderRadius: "8px",
-                          border: "1px solid #27272a",
+                          border: "1px solid var(--border, #27272a)",
                           padding: "2px",
                         }}
                       >
@@ -360,8 +360,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                             border: "none",
                             fontSize: "12px",
                             fontWeight: currentPermission === "view" ? 600 : 400,
-                            color: currentPermission === "view" ? "#ffffff" : "#a1a1aa",
-                            backgroundColor: currentPermission === "view" ? "#3b82f6" : "transparent",
+                            color: currentPermission === "view" ? "#ffffff" : "var(--muted-foreground, #a1a1aa)",
+                            backgroundColor: currentPermission === "view" ? "var(--primary, #10b981)" : "transparent",
                             cursor: "pointer",
                             transition: "all 0.15s ease",
                           }}
@@ -383,8 +383,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                             border: "none",
                             fontSize: "12px",
                             fontWeight: currentPermission === "edit" ? 600 : 400,
-                            color: currentPermission === "edit" ? "#ffffff" : "#a1a1aa",
-                            backgroundColor: currentPermission === "edit" ? "#3b82f6" : "transparent",
+                            color: currentPermission === "edit" ? "#ffffff" : "var(--muted-foreground, #a1a1aa)",
+                            backgroundColor: currentPermission === "edit" ? "var(--primary, #10b981)" : "transparent",
                             cursor: "pointer",
                             transition: "all 0.15s ease",
                           }}
@@ -406,17 +406,17 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.75rem",
-                  backgroundColor: "#111114",
-                  border: "1px solid #27272a",
+                  backgroundColor: "var(--surface, #111114)",
+                  border: "1px solid var(--border, #27272a)",
                   borderRadius: "10px",
                   padding: "1rem",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted-foreground, #71717a)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Shareable Link
                   </span>
-                  <span style={{ fontSize: "11px", color: currentPermission === "edit" ? "#60a5fa" : "#34d399" }}>
+                  <span style={{ fontSize: "11px", color: currentPermission === "edit" ? "var(--primary, #34d399)" : "#10b981" }}>
                     {currentPermission === "edit" ? "Recipients must log in to edit" : "No sign-in required to view"}
                   </span>
                 </div>
@@ -427,13 +427,13 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     display: "flex",
                     alignItems: "center",
                     gap: "0.5rem",
-                    backgroundColor: "#0d0d10",
-                    border: "1px solid #27272a",
+                    backgroundColor: "var(--input-bg, #0d0d10)",
+                    border: "1px solid var(--border, #27272a)",
                     borderRadius: "8px",
                     padding: "6px 8px",
                   }}
                 >
-                  <Link2 size={16} style={{ color: "#71717a", flexShrink: 0 }} />
+                  <Link2 size={16} style={{ color: "var(--muted-foreground, #71717a)", flexShrink: 0 }} />
                   <input
                     type="text"
                     readOnly
@@ -442,7 +442,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       flex: 1,
                       backgroundColor: "transparent",
                       border: "none",
-                      color: "#e4e4e7",
+                      color: "var(--foreground, #e4e4e7)",
                       fontSize: "12px",
                       outline: "none",
                       fontFamily: "monospace",
@@ -474,7 +474,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#a1a1aa",
+                        color: "var(--muted-foreground, #a1a1aa)",
                         fontSize: "11px",
                         cursor: "pointer",
                         display: "inline-flex",
@@ -482,8 +482,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                         gap: "4px",
                         padding: 0,
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f4f5")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground, #f4f4f5)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground, #a1a1aa)")}
                     >
                       <RotateCcw size={12} />
                       <span>Rotate or regenerate link</span>

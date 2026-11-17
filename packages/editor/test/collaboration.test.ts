@@ -346,7 +346,7 @@ describe("EditorStore — Real-Time Collaborative Synchronization & Loop Prevent
     assert.ok(pages);
     const targetEl = pages[0]?.elements.find((e) => e.id === "elem-circular");
     assert.ok(targetEl);
-    assert.equal(targetEl.properties.color, "#ff0000");
+    assert.equal((targetEl.properties as Record<string, unknown>).color, "#ff0000");
     // self reference is stripped
     assert.equal("self" in targetEl.properties, false);
   });

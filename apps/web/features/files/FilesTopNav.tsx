@@ -3,19 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Search,
-  Plus,
-  Sparkles,
-  LogOut,
-  User as UserIcon,
-  Settings,
-  Building2,
-  ChevronDown,
-  Check,
-  UserPlus,
-} from "lucide-react";
-import { Button, Badge, Dropdown, DropdownItem } from "@design-platform/ui";
+import { Search, Plus, LogOut, User as UserIcon, Settings, Building2, ChevronDown, Check } from "lucide-react";
+import { Dropdown, DropdownItem, ThemeToggle } from "@design-platform/ui";
+import { BrandMark } from "../marketing/illustrations";
+import styles from "./files.module.css";
 import { useAuth } from "@design-platform/auth";
 import { resetDesignRepository } from "../../lib/repository";
 import { WorkspaceSettingsDialog } from "../workspaces/WorkspaceSettingsDialog";
@@ -55,7 +46,14 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
     (user?.user_metadata?.display_name as string) ||
     user?.email?.split("@")[0] ||
     "User";
-  const initials = displayName.substring(0, 2).toUpperCase();
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "U";
 
   // Workspace Switcher Dropdown Items
   const workspaceMenuItems: DropdownItem[] = [
@@ -63,7 +61,7 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
       ? workspaces.map((ws) => ({
           id: `ws-${ws.id}`,
           label: `${ws.name} (${ws.role})`,
-          icon: ws.id === currentWorkspace?.id ? <Check size={14} style={{ color: "#3b82f6" }} /> : <Building2 size={14} />,
+          icon: ws.id === currentWorkspace?.id ? <Check size={14} style={{ color: "#10b981" }} /> : <Building2 size={14} />,
           onClick: () => switchWorkspace(ws.id),
         }))
       : currentWorkspace
@@ -71,7 +69,7 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
           {
             id: `ws-${currentWorkspace.id}`,
             label: `${currentWorkspace.name} (${currentWorkspace.role})`,
-            icon: <Check size={14} style={{ color: "#3b82f6" }} />,
+            icon: <Check size={14} style={{ color: "#10b981" }} />,
             onClick: () => {},
           },
         ]
@@ -114,265 +112,76 @@ export const FilesTopNav: React.FC<FilesTopNavProps> = ({
     : [];
 
   return (
-    <header
-      style={{
-        height: "60px",
-        borderBottom: "1px solid #27272a",
-        backgroundColor: "#09090b",
-        padding: "0 1.5rem",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "1.5rem",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}
-    >
-      {/* Brand & Main Nav Links */}
-      <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-        <Link
-          href="/files"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            textDecoration: "none",
-          }}
-        >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#ffffff",
-              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.4)",
-            }}
-          >
-            <Sparkles size={18} />
-          </div>
-          <span
-            style={{
-              fontSize: "1rem",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              color: "#f4f4f5",
-            }}
-          >
-            BioCanvas
-          </span>
-        </Link>
+    <header className={styles.topbar}>
+      <Link href="/files" className={styles.brand} aria-label="BioCanvas — your designs">
+        <BrandMark size={30} />
+        <span>BioCanvas</span>
+      </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <Link
-            href="/files"
-            style={{
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "#ffffff",
-              textDecoration: "none",
-              padding: "4px 8px",
-            }}
-          >
-            My Files
-          </Link>
+      {user && currentWorkspace && (
+        <Dropdown
+          align="left"
+          items={workspaceMenuItems}
+          trigger={
+            <button type="button" id="workspace-selector-dropdown-btn" className={styles.workspaceBtn} title="Switch workspace">
+              <span className={styles.wsAvatar}>{currentWorkspace.name.substring(0, 1).toUpperCase()}</span>
+              <span className={styles.wsName}>{currentWorkspace.name}</span>
+              <span className={styles.wsRole}>{currentWorkspace.role}</span>
+              <ChevronDown size={15} />
+            </button>
+          }
+        />
+      )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span
-              style={{
-                fontSize: "0.875rem",
-                color: "#71717a",
-                cursor: "not-allowed",
-                padding: "4px 8px",
-              }}
-            >
-              Templates
-            </span>
-            <Badge variant="outline" size="sm">
-              Coming Soon
-            </Badge>
-          </div>
+      <label className={styles.search}>
+        <Search size={17} />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search your designs"
+          aria-label="Search your designs"
+        />
+      </label>
 
-          {/* Workspace Selector Dropdown */}
-          {user && currentWorkspace && (
-            <Dropdown
-              align="left"
-              items={workspaceMenuItems}
-              trigger={
-                <button
-                  type="button"
-                  id="workspace-selector-dropdown-btn"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    backgroundColor: "#18181b",
-                    border: "1px solid #27272a",
-                    borderRadius: "8px",
-                    padding: "4px 10px",
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    color: "#f4f4f5",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#27272a")}
-                >
-                  <Building2 size={14} style={{ color: "#3b82f6" }} />
-                  <span
-                    style={{
-                      maxWidth: "150px",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {currentWorkspace.name}
-                  </span>
-                  <Badge
-                    variant={
-                      currentWorkspace.role === "owner"
-                        ? "primary"
-                        : currentWorkspace.role === "admin"
-                        ? "warning"
-                        : currentWorkspace.role === "editor"
-                        ? "success"
-                        : "outline"
-                    }
-                    size="sm"
-                  >
-                    {currentWorkspace.role.toUpperCase()}
-                  </Badge>
-                  <ChevronDown size={12} style={{ color: "#71717a" }} />
-                </button>
-              }
-            />
-          )}
-        </nav>
-      </div>
-
-      {/* Search Input */}
-      <div style={{ flex: 1, maxWidth: "420px" }}>
-        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-          <Search
-            size={16}
-            style={{
-              position: "absolute",
-              left: "0.75rem",
-              color: "#71717a",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search your designs..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            style={{
-              width: "100%",
-              height: "36px",
-              backgroundColor: "#141417",
-              border: "1px solid #27272a",
-              borderRadius: "8px",
-              padding: "0 0.75rem 0 2.25rem",
-              fontSize: "0.8125rem",
-              color: "#f4f4f5",
-              outline: "none",
-              fontFamily: "inherit",
-              transition: "border-color 0.15s ease",
-            }}
-            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-            onBlur={(e) => (e.target.style.borderColor = "#27272a")}
-          />
-        </div>
-      </div>
-
-      {/* Actions & Profile */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <Button variant="primary" size="sm" onClick={onCreateNew} icon={<Plus size={16} />}>
-          Create New
-        </Button>
-
+      <div className={styles.actions}>
+        <span className={styles.hideSm}>
+          <ThemeToggle size="sm" />
+        </span>
         {currentWorkspace && (
           <button
             type="button"
-            aria-label="Workspace Settings"
+            aria-label="Workspace settings and members"
             id="workspace-settings-gear-btn"
+            className={`${styles.iconBtn} ${styles.hideSm}`}
             onClick={() => setIsSettingsOpen(true)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#71717a",
-              padding: "8px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f4f5")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#71717a")}
-            title="Workspace Settings & Members"
+            title="Workspace settings & members"
           >
-            <Settings size={18} />
+            <Settings size={19} />
           </button>
         )}
+        <button type="button" className={styles.createBtn} onClick={onCreateNew}>
+          <Plus size={17} strokeWidth={2.5} />
+          <span>Create design</span>
+        </button>
 
-        {/* User Account / Auth */}
         {user ? (
           <Dropdown
             align="right"
             items={userMenuItems}
             trigger={
-              <button
-                type="button"
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: "#27272a",
-                  border: "1px solid #3f3f46",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: "#e4e4e7",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-                title={user.email || displayName}
-                aria-label="User account menu"
-              >
+              <button type="button" className={styles.avatarBtn} title={user.email || displayName} aria-label="Account menu">
                 {initials}
               </button>
             }
           />
         ) : (
-          <Link
-            href="/login"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "6px 14px",
-              borderRadius: "6px",
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            Sign In
+          <Link href="/login" className={styles.createBtn}>
+            Sign in
           </Link>
         )}
       </div>
 
-      {/* Workspace Settings Dialog */}
       {currentWorkspace && (
         <WorkspaceSettingsDialog
           isOpen={isSettingsOpen}

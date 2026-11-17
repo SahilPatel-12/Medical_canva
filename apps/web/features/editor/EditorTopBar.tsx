@@ -22,7 +22,7 @@ import {
   FileCode,
   Sparkles,
 } from "lucide-react";
-import { Button, Dropdown, DropdownItem, Badge } from "@design-platform/ui";
+import { Button, Dropdown, DropdownItem, Badge, ThemeToggle } from "@design-platform/ui";
 import { SaveStatus } from "@design-platform/editor";
 import { CollaboratorInfo } from "@design-platform/types";
 
@@ -166,7 +166,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           {
             id: "export-png",
             label: "Export PNG (High Resolution)",
-            icon: <FileImage size={15} style={{ color: "#2563eb" }} />,
+            icon: <FileImage size={15} style={{ color: "#047857" }} />,
             onClick: onExportPng,
           },
         ]
@@ -188,8 +188,8 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       <header
         style={{
           height: "56px",
-          backgroundColor: "#ffffff",
-          borderBottom: "1px solid #e2e8f0",
+          backgroundColor: "var(--surface, #ffffff)",
+          borderBottom: "1px solid var(--border, #e2e8f0)",
           padding: "0 1.25rem",
           display: "flex",
           alignItems: "center",
@@ -197,7 +197,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           gap: "1rem",
           userSelect: "none",
           zIndex: 50,
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
+          boxShadow: "var(--shadow-xs, 0 1px 3px 0 rgba(0, 0, 0, 0.04))",
         }}
       >
         {/* Left: Brand mark, Back button, Editable Name & Save Status */}
@@ -209,7 +209,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              color: "#475569",
+              color: "var(--foreground-secondary, #475569)",
               textDecoration: "none",
               fontSize: "0.8125rem",
               fontWeight: 600,
@@ -219,12 +219,12 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               backgroundColor: "transparent",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f5f9";
-              e.currentTarget.style.color = "#0f172a";
+              e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
+              e.currentTarget.style.color = "var(--foreground, #0f172a)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#475569";
+              e.currentTarget.style.color = "var(--foreground-secondary, #475569)";
             }}
             title="Return to files"
           >
@@ -233,12 +233,12 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                 width: "24px",
                 height: "24px",
                 borderRadius: "6px",
-                backgroundColor: "#eff6ff",
-                border: "1px solid #bfdbfe",
+                backgroundColor: "var(--primary-subtle, #ecfdf5)",
+                border: "1px solid var(--primary-border, #a7f3d0)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#2563eb",
+                color: "var(--primary, #047857)",
               }}
             >
               <ArrowLeft size={14} />
@@ -246,7 +246,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
             <span>Files</span>
           </Link>
 
-          <div style={{ height: "20px", width: "1px", backgroundColor: "#e2e8f0" }} />
+          <div style={{ height: "20px", width: "1px", backgroundColor: "var(--border, #e2e8f0)" }} />
 
           {/* Editable Name */}
           <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
@@ -259,10 +259,10 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                 onKeyDown={handleNameKeyDown}
                 autoFocus
                 style={{
-                  backgroundColor: "#ffffff",
-                  color: "#0f172a",
-                  border: "1px solid #2563eb",
-                  boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.15)",
+                  backgroundColor: "var(--input-bg, var(--surface, #ffffff))",
+                  color: "var(--foreground, #0f172a)",
+                  border: "1px solid var(--primary, #047857)",
+                  boxShadow: "0 0 0 3px var(--primary-glow, rgba(4, 120, 87, 0.15))",
                   borderRadius: "6px",
                   padding: "4px 8px",
                   fontSize: "0.875rem",
@@ -286,7 +286,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                   border: "1px solid transparent",
                   borderRadius: "6px",
                   padding: "4px 8px",
-                  color: "#0f172a",
+                  color: "var(--foreground, #0f172a)",
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -299,8 +299,8 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
+                  e.currentTarget.style.backgroundColor = "var(--surface-hover, #f8fafc)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "transparent";
@@ -318,17 +318,17 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                 alignItems: "center",
                 gap: "5px",
                 fontSize: "0.75rem",
-                color: "#64748b",
+                color: "var(--foreground-muted, #64748b)",
                 padding: "2px 8px",
                 borderRadius: "12px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--surface-muted, #f8fafc)",
+                border: "1px solid var(--border, #e2e8f0)",
               }}
             >
               {saveStatus === "saving" ? (
                 <>
-                  <Loader2 size={12} className="animate-spin" style={{ color: "#2563eb" }} />
-                  <span style={{ color: "#2563eb", fontWeight: 500 }}>Saving...</span>
+                  <Loader2 size={12} className="animate-spin" style={{ color: "#047857" }} />
+                  <span style={{ color: "#047857", fontWeight: 500 }}>Saving...</span>
                 </>
               ) : saveStatus === "saved" ? (
                 <>
@@ -401,10 +401,10 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               display: "flex",
               alignItems: "center",
               gap: "2px",
-              backgroundColor: "#f8fafc",
+              backgroundColor: "var(--surface-muted, #f8fafc)",
               padding: "2px",
               borderRadius: "8px",
-              border: "1px solid #e2e8f0",
+              border: "1px solid var(--border, #e2e8f0)",
             }}
           >
             <Button
@@ -426,7 +426,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#0f172a",
+                    color: "var(--foreground, #0f172a)",
                     fontSize: "0.75rem",
                     fontWeight: 600,
                     padding: "0 6px",
@@ -440,7 +440,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                   }}
                 >
                   <span>{Math.round(zoom * 100)}%</span>
-                  <ChevronDown size={12} style={{ color: "#64748b" }} />
+                  <ChevronDown size={12} style={{ color: "var(--foreground-muted, #64748b)" }} />
                 </button>
               }
               items={zoomMenuItems}
@@ -466,8 +466,11 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           </div>
         </div>
 
-        {/* Right: Shortcuts, Collaborators, Export, Save & Share */}
+        {/* Right: ThemeToggle, Shortcuts, Collaborators, Export, Save & Share */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+          {/* Light / Dark Mode Toggle */}
+          <ThemeToggle size="sm" />
+
           {/* Shortcuts Info Helper Button */}
           <button
             type="button"
@@ -477,9 +480,9 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               width: "32px",
               height: "32px",
               borderRadius: "8px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
-              color: "#64748b",
+              backgroundColor: "var(--surface, #ffffff)",
+              border: "1px solid var(--border, #e2e8f0)",
+              color: "var(--foreground-muted, #64748b)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -487,14 +490,14 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f5f9";
-              e.currentTarget.style.color = "#0f172a";
-              e.currentTarget.style.borderColor = "#cbd5e1";
+              e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
+              e.currentTarget.style.color = "var(--foreground, #0f172a)";
+              e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#ffffff";
-              e.currentTarget.style.color = "#64748b";
-              e.currentTarget.style.borderColor = "#e2e8f0";
+              e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+              e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
+              e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
             }}
           >
             <HelpCircle size={15} />
@@ -640,7 +643,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               variant="secondary"
               size="sm"
               onClick={onShareClick}
-              icon={<Share2 size={14} style={{ color: "#2563eb" }} />}
+              icon={<Share2 size={14} style={{ color: "#047857" }} />}
             >
               Share
             </Button>
@@ -656,7 +659,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backgroundColor: "rgba(0, 0, 0, 0.55)",
             backdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
@@ -670,10 +673,10 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               width: "520px",
               maxHeight: "85vh",
               overflowY: "auto",
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
+              backgroundColor: "var(--surface, #ffffff)",
+              border: "1px solid var(--border, #e2e8f0)",
               borderRadius: "14px",
-              boxShadow: "0 20px 48px rgba(0, 0, 0, 0.16)",
+              boxShadow: "var(--shadow-float, 0 20px 48px rgba(0, 0, 0, 0.25))",
               padding: "1.5rem",
               display: "flex",
               flexDirection: "column",
@@ -687,13 +690,13 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                borderBottom: "1px solid #e2e8f0",
+                borderBottom: "1px solid var(--border, #e2e8f0)",
                 paddingBottom: "1rem",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Keyboard size={20} style={{ color: "#2563eb" }} />
-                <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                <Keyboard size={20} style={{ color: "var(--primary, #047857)" }} />
+                <h3 style={{ fontSize: "1.0625rem", fontWeight: 700, color: "var(--foreground, #0f172a)", margin: 0 }}>
                   Keyboard Shortcuts
                 </h3>
               </div>
@@ -780,11 +783,11 @@ const ShortcutRow: React.FC<{ label: string; keys: string[] }> = ({ label, keys 
       justifyContent: "space-between",
       padding: "6px 10px",
       borderRadius: "6px",
-      backgroundColor: "#f8fafc",
-      border: "1px solid #e2e8f0",
+      backgroundColor: "var(--surface-muted, #f8fafc)",
+      border: "1px solid var(--border, #e2e8f0)",
     }}
   >
-    <span style={{ fontSize: "0.8125rem", color: "#334155" }}>{label}</span>
+    <span style={{ fontSize: "0.8125rem", color: "var(--foreground-secondary, #334155)" }}>{label}</span>
     <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
       {keys.map((k, i) => (
         <kbd
@@ -794,10 +797,10 @@ const ShortcutRow: React.FC<{ label: string; keys: string[] }> = ({ label, keys 
             fontWeight: 600,
             padding: "2px 6px",
             borderRadius: "4px",
-            backgroundColor: "#ffffff",
-            border: "1px solid #cbd5e1",
-            color: "#0f172a",
-            boxShadow: "0 1px 1px rgba(0,0,0,0.05)",
+            backgroundColor: "var(--surface, #ffffff)",
+            border: "1px solid var(--border-strong, #cbd5e1)",
+            color: "var(--foreground, #0f172a)",
+            boxShadow: "var(--shadow-xs, 0 1px 1px rgba(0,0,0,0.05))",
           }}
         >
           {k}

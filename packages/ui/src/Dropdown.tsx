@@ -65,11 +65,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
             [align]: 0,
             zIndex: 1000,
             minWidth: "170px",
-            backgroundColor: "#ffffff",
-            border: "1px solid #e2e8f0",
+            backgroundColor: "var(--surface, #ffffff)",
+            border: "1px solid var(--border, #e2e8f0)",
             borderRadius: "8px",
             padding: "4px",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+            boxShadow: "var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.12))",
             animation: "dropdownFadeIn 0.15s ease",
           }}
           onClick={(e) => e.stopPropagation()}
@@ -94,7 +94,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 borderRadius: "6px",
                 border: "none",
                 background: "transparent",
-                color: item.danger ? "#dc2626" : "#1e293b",
+                color: item.danger ? "#ef4444" : "var(--foreground, #1e293b)",
                 fontWeight: 500,
                 cursor: item.disabled ? "not-allowed" : "pointer",
                 textAlign: "left",
@@ -105,8 +105,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
               onMouseEnter={(e) => {
                 if (!item.disabled) {
                   e.currentTarget.style.backgroundColor = item.danger
-                    ? "#fef2f2"
-                    : "#f1f5f9";
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : "var(--surface-hover, #f1f5f9)";
                 }
               }}
               onMouseLeave={(e) => {
@@ -114,7 +114,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               }}
             >
               {item.icon && (
-                <span style={{ display: "inline-flex", alignItems: "center", fontSize: "14px", color: item.danger ? "#dc2626" : "#64748b" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", fontSize: "14px", color: item.danger ? "#ef4444" : "var(--foreground-muted, #64748b)" }}>
                   {item.icon}
                 </span>
               )}

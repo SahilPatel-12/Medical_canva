@@ -8,40 +8,29 @@ import {
   getSubcategory,
 } from "@design-platform/editor";
 import { Asset, AssetCategory, AssetCategoryItem, DesignDocument, DesignElement } from "@design-platform/types";
-import { EditorPropertiesPanel } from "./EditorPropertiesPanel";
+import { EditorPropertiesPanel, EditorPropertiesPanelProps } from "./EditorPropertiesPanel";
+import { ElementsPanel, LayersPanel, TextPanel, UploadsPanel } from "./panels/LeftPanels";
+import type { ElementTemplate } from "./panels/elementTemplates";
+import {
+  AdjustIcon,
+  AssetsIcon,
+  ElementsIcon,
+  LayersIcon,
+  PaletteIcon,
+  TextIcon,
+  UploadsIcon,
+} from "./icons/EditorIcons";
 import { ScientificAssetsPanel, AssetNavLevel } from "./ScientificAssetsPanel";
 import {
-  LibraryBig,
   Shapes,
-  Type,
-  Upload,
-  Search,
-  X,
-  ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Star,
-  Triangle,
-  Hexagon,
-  ArrowRight,
   Heart,
-  Plus,
   Layers,
-  Shield,
   Activity,
   Dna,
   FlaskConical,
   Folder,
-  Tag,
-  FileUp,
-  Trash2,
   Sparkles,
-  SlidersHorizontal,
-  ArrowUp,
-  ArrowDown,
-  Copy,
-  FileImage,
-  Check,
 } from "lucide-react";
 
 export type LeftPanelTab = "assets" | "elements" | "text" | "uploads" | "layers" | "properties";
@@ -54,6 +43,14 @@ export interface EditorLeftPanelProps {
   onAddAsset: (asset: Asset) => void;
   onAddShape: (shapeType: "rectangle" | "circle" | "line") => void;
   onAddText: (variant: "heading" | "subheading" | "body" | "label") => void;
+  /** Adds an element from the Elements / Text panels (and optionally starts typing into text) */
+  onInsertElement?: (template: ElementTemplate, startEditing?: boolean) => void;
+  /** Moves an element to a stacking index (0 = bottom), from the Layers panel */
+  onMoveElement?: (id: string, index: number) => void;
+  /** Multi-selection (ids + actions) */
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  multi?: EditorPropertiesPanelProps["multi"];
   document?: DesignDocument;
   selectedElement?: DesignElement | null;
   activePageIndex?: number;
@@ -65,10 +62,25 @@ export interface EditorLeftPanelProps {
   onSendBackward?: (id?: string) => void;
   onBringToFront?: (id?: string) => void;
   onSendToBack?: (id?: string) => void;
-  onUpdateSvgColor?: (fill?: string, stroke?: string) => void;
+  onUpdateSvgColor?: (fill?: string, stroke?: string, strokeWidth?: number) => void;
   onUpdateSvgColorMap?: (colorMap: Record<string, string>) => void;
+  onUpdateSvgComponentColor?: (
+    componentIdOrIndex: string | number,
+    colors: { fill?: string; stroke?: string }
+  ) => void;
+  onApplyScientificPreset?: (
+    presetIdOrPreset: string,
+    componentIdOrIndex?: string | number
+  ) => void;
+  onDistributeSvgComponents?: () => void;
   onResetSvgColors?: () => void;
+  groupEditSession?: EditorPropertiesPanelProps["groupEditSession"];
+  onEnterGroupEdit?: (id?: string) => void;
+  onExitGroupEdit?: () => void;
+  onExitAllGroupEdits?: () => void;
+  onUngroupLayer?: () => void;
   onSetCanvasBackground?: (color: string) => void;
+  onSetPageBackground?: (color: string) => void;
 }
 
 /**
@@ -124,8 +136,6 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
   activeTab: controlledActiveTab,
   onTabChange,
   onAddAsset,
-  onAddShape,
-  onAddText,
   document,
   selectedElement,
   activePageIndex = 0,
@@ -139,14 +149,27 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
   onSendToBack,
   onUpdateSvgColor,
   onUpdateSvgColorMap,
+  onUpdateSvgComponentColor,
+  onApplyScientificPreset,
+  onDistributeSvgComponents,
   onResetSvgColors,
+  groupEditSession,
+  onEnterGroupEdit,
+  onExitGroupEdit,
+  onInsertElement,
+  onMoveElement,
+  selectedIds,
+  onToggleSelect,
+  multi,
+  onExitAllGroupEdits,
+  onUngroupLayer,
   onSetCanvasBackground,
+  onSetPageBackground,
   isCollapsed: controlledCollapsed,
   onToggleCollapse,
 }) => {
   const isDraggingRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [internalTab, setInternalTab] = useState<LeftPanelTab>("assets");
   const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalTab;
@@ -228,21 +251,21 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
   }, []);
 
   const creationTabs = [
-    { id: "assets" as LeftPanelTab, label: "Assets", icon: <LibraryBig size={18} /> },
-    { id: "elements" as LeftPanelTab, label: "Elements", icon: <Shapes size={18} /> },
-    { id: "text" as LeftPanelTab, label: "Text", icon: <Type size={18} /> },
-    { id: "uploads" as LeftPanelTab, label: "Uploads", icon: <Upload size={18} /> },
+    { id: "assets" as LeftPanelTab, label: "Assets", icon: <AssetsIcon size={24} /> },
+    { id: "elements" as LeftPanelTab, label: "Elements", icon: <ElementsIcon size={24} /> },
+    { id: "text" as LeftPanelTab, label: "Text", icon: <TextIcon size={24} /> },
+    { id: "uploads" as LeftPanelTab, label: "Uploads", icon: <UploadsIcon size={24} /> },
   ];
 
   const organizationTabs = [
-    { id: "layers" as LeftPanelTab, label: "Layers", icon: <Layers size={18} /> },
+    { id: "layers" as LeftPanelTab, label: "Layers", icon: <LayersIcon size={24} /> },
   ];
 
   const contextualTabs = [
     {
       id: "properties" as LeftPanelTab,
       label: selectedElement ? "Properties" : "Canvas",
-      icon: <SlidersHorizontal size={18} />,
+      icon: selectedElement ? <AdjustIcon size={24} /> : <PaletteIcon size={24} />,
     },
   ];
 
@@ -257,6 +280,15 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
     }
     return merged;
   }, [remoteAssets]);
+
+  // Shapes & symbols from the library, offered in the Elements panel
+  const libraryShapeAssets = useMemo(
+    () =>
+      combinedAssets.filter((a) =>
+        ["arrows-and-shapes", "graphs-and-symbols"].includes(a.categorySlug || a.category)
+      ),
+    [combinedAssets]
+  );
 
   // Filtered assets
   const filteredAssets = useMemo(() => {
@@ -313,59 +345,63 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
     });
   };
 
-  // Upload file handler
+  // Upload handler: several files at once; each keeps its real proportions on the page
   const handleFileUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploadError(null);
+    const valid = ["image/svg+xml", "image/png", "image/jpeg", "image/webp"];
+    const accepted = Array.from(files).filter((f) => valid.includes(f.type) || f.name.toLowerCase().endsWith(".svg"));
+    const rejected = files.length - accepted.length;
+    const tooBig = accepted.filter((f) => f.size > 15 * 1024 * 1024);
+    const usable = accepted.filter((f) => f.size <= 15 * 1024 * 1024);
+    if (rejected > 0 || tooBig.length > 0) {
+      setUploadError(
+        [
+          rejected > 0 ? `${rejected} file${rejected > 1 ? "s" : ""} skipped: use SVG, PNG, JPG or WebP.` : "",
+          tooBig.length > 0 ? `${tooBig.map((f) => f.name).join(", ")} ${tooBig.length > 1 ? "are" : "is"} over 15 MB.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+    }
+    if (usable.length === 0) return;
     setIsUploading(true);
 
-    const file = files[0];
-    const validTypes = ["image/svg+xml", "image/png", "image/jpeg", "image/webp"];
-    if (!validTypes.includes(file.type) && !file.name.endsWith(".svg")) {
-      setUploadError("Invalid file type. Please upload SVG, PNG, JPEG, or WebP.");
-      setIsUploading(false);
-      return;
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      setUploadError("File is too large. Maximum size is 15 MB.");
-      setIsUploading(false);
-      return;
-    }
-
-    const reader = new FileReader();
-    if (file.type === "image/svg+xml" || file.name.endsWith(".svg")) {
-      reader.onload = (e) => {
-        const svgContent = e.target?.result as string;
-        const newAsset: Asset = {
-          id: `upload-${Date.now()}`,
-          name: file.name.replace(/\.[^/.]+$/, ""),
-          type: "svg",
-          category: "uploads",
-          source: svgContent,
-          createdAt: new Date().toISOString(),
+    const fit = (w: number, h: number) => {
+      const k = Math.min(1, 420 / Math.max(w || 1, h || 1));
+      return { defaultWidth: Math.max(24, Math.round((w || 200) * k)), defaultHeight: Math.max(24, Math.round((h || 200) * k)) };
+    };
+    const readOne = (file: File) =>
+      new Promise<Asset | null>((resolve) => {
+        const reader = new FileReader();
+        const isSvg = file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+        const name = file.name.replace(/\.[^/.]+$/, "");
+        const id = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        reader.onerror = () => resolve(null);
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          if (isSvg) {
+            const vb = result.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
+            const size = vb ? fit(parseFloat(vb[1]!), parseFloat(vb[2]!)) : fit(240, 240);
+            resolve({ id, name, type: "svg", category: "uploads", source: result, createdAt: new Date().toISOString(), ...size });
+            return;
+          }
+          const img = new window.Image();
+          img.onload = () =>
+            resolve({ id, name, type: "image", category: "uploads", source: result, url: result, createdAt: new Date().toISOString(), ...fit(img.naturalWidth, img.naturalHeight) });
+          img.onerror = () => resolve(null);
+          img.src = result;
         };
-        setUploadedAssets((prev) => [newAsset, ...prev]);
-        setIsUploading(false);
-      };
-      reader.readAsText(file);
-    } else {
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const newAsset: Asset = {
-          id: `upload-${Date.now()}`,
-          name: file.name.replace(/\.[^/.]+$/, ""),
-          type: "image",
-          category: "uploads",
-          source: dataUrl,
-          url: dataUrl,
-          createdAt: new Date().toISOString(),
-        };
-        setUploadedAssets((prev) => [newAsset, ...prev]);
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
-    }
+        if (isSvg) reader.readAsText(file);
+        else reader.readAsDataURL(file);
+      });
+
+    Promise.all(usable.map(readOne)).then((assets) => {
+      const ok = assets.filter((a): a is Asset => Boolean(a));
+      setUploadedAssets((prev) => [...ok, ...prev]);
+      if (ok.length < usable.length) setUploadError("Some files could not be read.");
+      setIsUploading(false);
+    });
   };
 
   const activePage = document?.pages?.[activePageIndex || 0] || document?.pages?.[0];
@@ -377,6 +413,8 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
       <button
         key={tab.id}
         type="button"
+        className={isActive ? "is-active" : undefined}
+        aria-current={isActive ? "page" : undefined}
         onClick={() => handleTabClick(tab.id)}
         title={`${tab.label} (Click to ${isActive ? "collapse" : "open"})`}
         style={{
@@ -389,22 +427,22 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
           gap: "3px",
           borderRadius: "10px",
           border: "none",
-          backgroundColor: isActive ? "#eff6ff" : "transparent",
-          color: isActive ? "#2563eb" : "#64748b",
+          backgroundColor: isActive ? "var(--primary-subtle, #ecfdf5)" : "transparent",
+          color: isActive ? "var(--primary, #047857)" : "var(--foreground-muted, #64748b)",
           cursor: "pointer",
           transition: "all 0.15s ease",
           position: "relative",
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.backgroundColor = "#f8fafc";
-            e.currentTarget.style.color = "#0f172a";
+            e.currentTarget.style.backgroundColor = "var(--surface-hover, #f8fafc)";
+            e.currentTarget.style.color = "var(--foreground, #0f172a)";
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#64748b";
+            e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
           }
         }}
       >
@@ -420,7 +458,7 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
               top: "14px",
               bottom: "14px",
               width: "3px",
-              backgroundColor: "#2563eb",
+              backgroundColor: "var(--primary, #047857)",
               borderRadius: "0 4px 4px 0",
             }}
           />
@@ -435,7 +473,7 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
         display: "flex",
         height: "100%",
         minHeight: 0,
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--surface, #ffffff)",
         zIndex: 40,
         position: "relative",
       }}
@@ -446,13 +484,13 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
           width: "64px",
           height: "100%",
           minHeight: 0,
-          borderRight: "1px solid #e2e8f0",
+          borderRight: "1px solid var(--border, #e2e8f0)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           padding: "0.75rem 0",
           gap: "0.375rem",
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--surface, #ffffff)",
           flexShrink: 0,
           overflowY: "auto",
         }}
@@ -461,7 +499,7 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
         {creationTabs.map(renderRailButton)}
 
         {/* Divider */}
-        <div style={{ width: "32px", height: "1px", backgroundColor: "#e2e8f0", margin: "4px 0" }} />
+        <div style={{ width: "32px", height: "1px", backgroundColor: "var(--border, #e2e8f0)", margin: "4px 0" }} />
 
         {/* Organization Tools */}
         {organizationTabs.map(renderRailButton)}
@@ -483,24 +521,24 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
             zIndex: 45,
             width: "24px",
             height: "40px",
-            backgroundColor: "#ffffff",
-            border: "1px solid #e2e8f0",
+            backgroundColor: "var(--surface, #ffffff)",
+            border: "1px solid var(--border, #e2e8f0)",
             borderLeft: "none",
             borderRadius: "0 8px 8px 0",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#64748b",
+            color: "var(--foreground-muted, #64748b)",
             cursor: "pointer",
             boxShadow: "2px 0 8px rgba(0,0,0,0.06)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#f8fafc";
-            e.currentTarget.style.color = "#0f172a";
+            e.currentTarget.style.backgroundColor = "var(--surface-hover, #f8fafc)";
+            e.currentTarget.style.color = "var(--foreground, #0f172a)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "#ffffff";
-            e.currentTarget.style.color = "#64748b";
+            e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+            e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
           }}
         >
           <ChevronRight size={16} />
@@ -514,10 +552,10 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
             width: "340px",
             height: "100%",
             minHeight: 0,
-            borderRight: "1px solid #e2e8f0",
+            borderRight: "1px solid var(--border, #e2e8f0)",
             display: "flex",
             flexDirection: "column",
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--surface, #ffffff)",
             overflowY: "auto",
             transition: "width 0.2s ease",
             position: "relative",
@@ -547,1132 +585,44 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
           {/* 2. ELEMENTS TAB (Shapes, Badges & Connectors)        */}
           {/* ==================================================== */}
           {activeTab === "elements" && (
-            <div
-              style={{
-                padding: "1.125rem 1.125rem 5rem 1.125rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.25rem",
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <h2
-                    style={{
-                      fontSize: "0.9375rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Shapes size={17} style={{ color: "#059669" }} />
-                    Shapes & Elements
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginTop: "2px",
-                      margin: 0,
-                    }}
-                  >
-                    Geometric shapes and scientific connectors
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  title="Collapse panel"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "transparent",
-                    color: "#64748b",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-              </div>
-
-              {/* Section 1: Geometric Shapes */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    color: "#64748b",
-                  }}
-                >
-                  Geometric Shapes
-                </span>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {/* Rectangle */}
-                  <button
-                    type="button"
-                    onClick={() => onAddShape("rectangle")}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#2563eb";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "36px",
-                        height: "26px",
-                        backgroundColor: "#2563eb",
-                        borderRadius: "3px",
-                      }}
-                    />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Rectangle</span>
-                  </button>
-
-                  {/* Circle */}
-                  <button
-                    type="button"
-                    onClick={() => onAddShape("circle")}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#059669";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "30px",
-                        height: "30px",
-                        backgroundColor: "#059669",
-                        borderRadius: "50%",
-                      }}
-                    />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Circle</span>
-                  </button>
-
-                  {/* Connector Line */}
-                  <button
-                    type="button"
-                    onClick={() => onAddShape("line")}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#d97706";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "36px",
-                        height: "4px",
-                        backgroundColor: "#d97706",
-                        borderRadius: "2px",
-                      }}
-                    />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Connector Line</span>
-                  </button>
-
-                  {/* Star */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const starAsset = combinedAssets.find((a) => a.id === "asset-shape-star");
-                      if (starAsset) onAddAsset(starAsset);
-                    }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#eab308";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <Star size={26} style={{ color: "#eab308", fill: "#eab308" }} />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Star</span>
-                  </button>
-
-                  {/* Triangle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const tri = combinedAssets.find((a) => a.id === "asset-shape-triangle");
-                      if (tri) onAddAsset(tri);
-                    }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#2563eb";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <Triangle size={24} style={{ color: "#2563eb", fill: "#2563eb" }} />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Triangle</span>
-                  </button>
-
-                  {/* Arrow Right */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const arrow = combinedAssets.find(
-                        (a) => a.id === "asset-shape-arrow-right"
-                      );
-                      if (arrow) onAddAsset(arrow);
-                    }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "0.75rem 0.5rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#8b5cf6";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <ArrowRight size={24} style={{ color: "#8b5cf6" }} />
-                    <span style={{ fontSize: "11px", fontWeight: 600 }}>Arrow Indicator</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Section 2: Medical & Scientific Symbols */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <span
-                  style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    color: "#64748b",
-                  }}
-                >
-                  Medical & Science Badges
-                </span>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {/* Medical Cross */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const cross = combinedAssets.find((a) => a.id === "asset-bio-cross");
-                      if (cross) onAddAsset(cross);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "0.625rem 0.75rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#ef4444";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "4px",
-                        backgroundColor: "#ef4444",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#ffffff",
-                        fontWeight: 900,
-                        fontSize: "16px",
-                      }}
-                    >
-                      +
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "11px", fontWeight: 600 }}>Medical Cross</div>
-                      <div style={{ fontSize: "9px", color: "#64748b" }}>First aid</div>
-                    </div>
-                  </button>
-
-                  {/* Heart / Pulse */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const heart = combinedAssets.find((a) => a.id === "asset-bio-heart");
-                      if (heart) onAddAsset(heart);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "0.625rem 0.75rem",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#ef4444";
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                  >
-                    <Heart size={20} style={{ color: "#ef4444", fill: "#ef4444" }} />
-                    <div>
-                      <div style={{ fontSize: "11px", fontWeight: 600 }}>Heart Pulse</div>
-                      <div style={{ fontSize: "9px", color: "#64748b" }}>Cardiology</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ElementsPanel
+              onInsert={(template) => onInsertElement?.(template)}
+              libraryItems={libraryShapeAssets}
+              onAddAsset={handleAssetInsert}
+              onCollapse={toggleCollapsed}
+            />
           )}
 
-          {/* ==================================================== */}
-          {/* 3. TEXT TAB (Headings, Body & Scientific Labels)     */}
-          {/* ==================================================== */}
           {activeTab === "text" && (
-            <div
-              style={{
-                padding: "1.125rem 1.125rem 5rem 1.125rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <h2
-                    style={{
-                      fontSize: "0.9375rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Type size={17} style={{ color: "#2563eb" }} />
-                    Typography & Labels
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginTop: "2px",
-                      margin: 0,
-                    }}
-                  >
-                    Scientific titles, body text, and figure callouts
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  title="Collapse panel"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "transparent",
-                    color: "#64748b",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-                {/* Heading */}
-                <button
-                  type="button"
-                  onClick={() => onAddText("heading")}
-                  style={{
-                    padding: "0.875rem 1rem",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    color: "#0f172a",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#2563eb";
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.04)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>Add a Heading</div>
-                  <div style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "2px" }}>
-                    32px Bold title for illustrations & diagrams
-                  </div>
-                </button>
-
-                {/* Subheading */}
-                <button
-                  type="button"
-                  onClick={() => onAddText("subheading")}
-                  style={{
-                    padding: "0.75rem 1rem",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    color: "#0f172a",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#2563eb";
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.04)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <div style={{ fontSize: "1rem", fontWeight: 600 }}>Add a Subheading</div>
-                  <div style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "2px" }}>
-                    20px Semi-bold section subtitle
-                  </div>
-                </button>
-
-                {/* Body Text */}
-                <button
-                  type="button"
-                  onClick={() => onAddText("body")}
-                  style={{
-                    padding: "0.75rem 1rem",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    color: "#0f172a",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#2563eb";
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.04)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <div style={{ fontSize: "0.875rem", fontWeight: 400 }}>Add Body Text</div>
-                  <div style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "2px" }}>
-                    15px Regular descriptive paragraph
-                  </div>
-                </button>
-
-                {/* Scientific Label / Callout */}
-                <button
-                  type="button"
-                  onClick={() => onAddText("label")}
-                  style={{
-                    padding: "0.75rem 1rem",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    color: "#0f172a",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#2563eb";
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.04)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#2563eb" }}>
-                    Add Figure Label / Caption
-                  </div>
-                  <div style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "2px" }}>
-                    12px Compact label for antibodies, cells & receptors
-                  </div>
-                </button>
-              </div>
-            </div>
+            <TextPanel onInsert={(template, edit) => onInsertElement?.(template, edit)} onCollapse={toggleCollapsed} />
           )}
 
-          {/* ==================================================== */}
-          {/* 4. UPLOADS TAB (Functional Drag-and-Drop Zone)       */}
-          {/* ==================================================== */}
           {activeTab === "uploads" && (
-            <div
-              style={{
-                padding: "1.125rem 1.125rem 5rem 1.125rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.25rem",
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <h2
-                    style={{
-                      fontSize: "0.9375rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Upload size={17} style={{ color: "#2563eb" }} />
-                    My Uploads
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginTop: "2px",
-                      margin: 0,
-                    }}
-                  >
-                    Workspace-owned images & SVG models
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  title="Collapse panel"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "transparent",
-                    color: "#64748b",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-              </div>
-
-              {/* Upload Dropzone */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleFileUpload(e.dataTransfer.files);
-                }}
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  padding: "1.5rem 1rem",
-                  borderRadius: "10px",
-                  border: "2px dashed #cbd5e1",
-                  backgroundColor: "#f8fafc",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  gap: "0.625rem",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#2563eb";
-                  e.currentTarget.style.backgroundColor = "#eff6ff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.backgroundColor = "#f8fafc";
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp"
-                  style={{ display: "none" }}
-                  onChange={(e) => handleFileUpload(e.target.files)}
-                />
-
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    borderRadius: "10px",
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#2563eb",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <FileUp size={22} />
-                </div>
-
-                <div>
-                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#0f172a" }}>
-                    Click to browse or drag file here
-                  </span>
-                  <p
-                    style={{
-                      fontSize: "0.6875rem",
-                      color: "#64748b",
-                      marginTop: "2px",
-                      margin: 0,
-                    }}
-                  >
-                    SVG, PNG, JPG, or WebP (up to 15 MB)
-                  </p>
-                </div>
-              </div>
-
-              {uploadError && (
-                <div
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    color: "#dc2626",
-                    fontSize: "11px",
-                  }}
-                >
-                  {uploadError}
-                </div>
-              )}
-
-              {/* Uploaded List */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span
-                    style={{
-                      fontSize: "0.6875rem",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "#64748b",
-                    }}
-                  >
-                    Recent Uploads ({uploadedAssets.length})
-                  </span>
-                </div>
-
-                {uploadedAssets.length > 0 ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2, 1fr)",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    {uploadedAssets.map((asset) => (
-                      <div
-                        key={asset.id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("application/json", JSON.stringify(asset));
-                        }}
-                        onClick={() => handleAssetInsert(asset)}
-                        style={{
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "8px",
-                          padding: "0.5rem",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: "4px",
-                          cursor: "pointer",
-                          position: "relative",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "48px",
-                            height: "48px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {asset.type === "svg" ? (
-                            <div
-                              style={{ width: "100%", height: "100%" }}
-                              dangerouslySetInnerHTML={{ __html: asset.source }}
-                            />
-                          ) : (
-                            <img
-                              src={asset.url || asset.source}
-                              alt={asset.name}
-                              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-                            />
-                          )}
-                        </div>
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            fontWeight: 500,
-                            color: "#0f172a",
-                            textAlign: "center",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            width: "100%",
-                          }}
-                        >
-                          {asset.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      padding: "1rem",
-                      textAlign: "center",
-                      backgroundColor: "#f8fafc",
-                      borderRadius: "8px",
-                      border: "1px dashed #e2e8f0",
-                      fontSize: "11px",
-                      color: "#94a3b8",
-                    }}
-                  >
-                    No uploaded assets yet. Drag and drop custom SVGs or images above.
-                  </div>
-                )}
-              </div>
-            </div>
+            <UploadsPanel
+              uploads={uploadedAssets}
+              isUploading={isUploading}
+              error={uploadError}
+              onFiles={handleFileUpload}
+              onAddAsset={handleAssetInsert}
+              onRemove={(id) => setUploadedAssets((prev) => prev.filter((a) => a.id !== id))}
+              onCollapse={toggleCollapsed}
+            />
           )}
 
-          {/* ==================================================== */}
-          {/* 5. LAYERS TAB (Active Page Element Stack)            */}
-          {/* ==================================================== */}
           {activeTab === "layers" && (
-            <div
-              style={{
-                padding: "1.125rem 1.125rem 5rem 1.125rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <h2
-                    style={{
-                      fontSize: "0.9375rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Layers size={17} style={{ color: "#2563eb" }} />
-                    Page Layers
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginTop: "2px",
-                      margin: 0,
-                    }}
-                  >
-                    {pageElements.length} {pageElements.length === 1 ? "layer" : "layers"} on active page
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  title="Collapse panel"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: "transparent",
-                    color: "#64748b",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-              </div>
-
-              {/* Elements List */}
-              {pageElements.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {[...pageElements].reverse().map((el) => {
-                    const isSelected = selectedElement?.id === el.id;
-                    const elTitle = formatAssetName(el.name || el.type);
-
-                    return (
-                      <div
-                        key={el.id}
-                        onClick={() => onSelectElement?.(el.id)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "8px 10px",
-                          borderRadius: "8px",
-                          border: `1px solid ${isSelected ? "#2563eb" : "#e2e8f0"}`,
-                          backgroundColor: isSelected ? "#eff6ff" : "#ffffff",
-                          cursor: "pointer",
-                          transition: "all 0.12s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = "#f8fafc";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = "#ffffff";
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            minWidth: 0,
-                            flex: 1,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: isSelected ? "#2563eb" : "#64748b",
-                              flexShrink: 0,
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            {el.type === "svg" ? (
-                              <LibraryBig size={15} />
-                            ) : el.type === "text" ? (
-                              <Type size={15} />
-                            ) : el.type === "shape" ? (
-                              <Shapes size={15} />
-                            ) : (
-                              <FileImage size={15} />
-                            )}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "12px",
-                              fontWeight: isSelected ? 600 : 500,
-                              color: isSelected ? "#1d4ed8" : "#1e293b",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={elTitle}
-                          >
-                            {elTitle}
-                          </span>
-                        </div>
-
-                        {/* Layer Actions */}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "2px",
-                            flexShrink: 0,
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => onBringForward?.(el.id)}
-                            title="Bring Forward"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: "3px 4px",
-                              color: "#64748b",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#0f172a")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#64748b")}
-                          >
-                            <ArrowUp size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onSendBackward?.(el.id)}
-                            title="Send Backward"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: "3px 4px",
-                              color: "#64748b",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#0f172a")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#64748b")}
-                          >
-                            <ArrowDown size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDuplicateElement?.(el.id)}
-                            title="Duplicate"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: "3px 4px",
-                              color: "#64748b",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#2563eb")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#64748b")}
-                          >
-                            <Copy size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteElement?.(el.id)}
-                            title="Delete"
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: "3px 4px",
-                              color: "#dc2626",
-                              cursor: "pointer",
-                              borderRadius: "4px",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#fee2e2")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "transparent")
-                            }
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    padding: "2rem 1rem",
-                    textAlign: "center",
-                    backgroundColor: "#f8fafc",
-                    borderRadius: "8px",
-                    border: "1px dashed #e2e8f0",
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                  }}
-                >
-                  No elements on this page. Add an illustration, shape, or text.
-                </div>
-              )}
-            </div>
+            <LayersPanel
+              elements={pageElements}
+              selectedId={selectedElement?.id || null}
+              selectedIds={selectedIds}
+              onSelect={(id, additive) => (additive && onToggleSelect ? onToggleSelect(id) : onSelectElement?.(id))}
+              onUpdate={(id, updates) => onUpdateElement?.(id, updates)}
+              onDuplicate={(id) => onDuplicateElement?.(id)}
+              onDelete={(id) => onDeleteElement?.(id)}
+              onMove={(id, index) => onMoveElement?.(id, index)}
+              onCollapse={toggleCollapsed}
+            />
           )}
 
-          {/* ==================================================== */}
-          {/* 6. CONTEXTUAL PROPERTIES & CANVAS SETTINGS           */}
-          {/* ==================================================== */}
           {activeTab === "properties" && document && onUpdateElement && (
             <EditorPropertiesPanel
               document={document}
@@ -1687,8 +637,18 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
               onSendToBack={onSendToBack || (() => {})}
               onUpdateSvgColor={onUpdateSvgColor || (() => {})}
               onUpdateSvgColorMap={onUpdateSvgColorMap}
+              onUpdateSvgComponentColor={onUpdateSvgComponentColor}
+              onApplyScientificPreset={onApplyScientificPreset}
+              onDistributeSvgComponents={onDistributeSvgComponents}
               onResetSvgColors={onResetSvgColors}
+              groupEditSession={groupEditSession}
+              onEnterGroupEdit={onEnterGroupEdit}
+              onExitGroupEdit={onExitGroupEdit}
+              onExitAllGroupEdits={onExitAllGroupEdits}
+              onUngroupLayer={onUngroupLayer}
+              multi={multi}
               onSetCanvasBackground={onSetCanvasBackground || (() => {})}
+              onSetPageBackground={onSetPageBackground}
               embedded
               onBackToLibrary={() => handleTabClick("assets")}
             />
@@ -1698,7 +658,7 @@ export const EditorLeftPanel: React.FC<EditorLeftPanelProps> = ({
             <div
               style={{
                 padding: "2rem 1rem",
-                color: "#64748b",
+                color: "var(--foreground-muted, #64748b)",
                 fontSize: "12px",
                 textAlign: "center",
               }}

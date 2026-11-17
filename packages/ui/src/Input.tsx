@@ -20,7 +20,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             style={{
               fontSize: "0.8125rem",
               fontWeight: 500,
-              color: "#334155",
+              color: "var(--foreground-secondary, #334155)",
               letterSpacing: "0.01em",
             }}
           >
@@ -35,7 +35,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 left: "0.75rem",
                 display: "flex",
                 alignItems: "center",
-                color: "#64748b",
+                color: "var(--foreground-muted, #64748b)",
                 pointerEvents: "none",
               }}
             >
@@ -47,16 +47,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             style={{
               width: "100%",
-              backgroundColor: "#ffffff",
-              color: "#0f172a",
-              border: `1px solid ${error ? "#ef4444" : "#cbd5e1"}`,
+              backgroundColor: "var(--input-bg, var(--surface, #ffffff))",
+              color: "var(--foreground, #0f172a)",
+              border: `1px solid ${error ? "#ef4444" : "var(--border-strong, #cbd5e1)"}`,
               borderRadius: "6px",
               padding: leftIcon ? "0.45rem 0.75rem 0.45rem 2.25rem" : "0.45rem 0.75rem",
               fontSize: "0.875rem",
               outline: "none",
               transition: "border-color 0.15s ease, box-shadow 0.15s ease",
               fontFamily: "inherit",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+              boxShadow: "var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04))",
               ...style,
             }}
             {...props}

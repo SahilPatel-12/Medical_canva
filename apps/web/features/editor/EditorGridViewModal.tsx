@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Page, DesignDocument } from "@design-platform/types";
+import { Page, DesignDocument, getPageBackground } from "@design-platform/types";
 import { PageThumbnailPreview } from "./PageThumbnailPreview";
 import { X, Plus, Copy, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@design-platform/ui";
@@ -55,15 +55,15 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
           alignItems: "center",
           justifyContent: "space-between",
           padding: "1rem 2rem",
-          borderBottom: "1px solid #e2e8f0",
-          backgroundColor: "#ffffff",
+          borderBottom: "1px solid var(--border, #e2e8f0)",
+          backgroundColor: "var(--surface, #ffffff)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+          <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--foreground, #0f172a)", margin: 0 }}>
             Canvas Pages ({pages.length})
           </h2>
-          <span style={{ fontSize: "0.875rem", color: "#64748b" }}>
+          <span style={{ fontSize: "0.875rem", color: "var(--foreground-muted, #64748b)" }}>
             Select a canvas page to edit or manage your overall design
           </span>
         </div>
@@ -89,20 +89,20 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
+              background: "var(--surface, #ffffff)",
+              border: "1px solid var(--border, #e2e8f0)",
               borderRadius: "8px",
-              color: "#64748b",
+              color: "var(--foreground-muted, #64748b)",
               cursor: "pointer",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f5f9";
-              e.currentTarget.style.color = "#0f172a";
+              e.currentTarget.style.backgroundColor = "var(--surface-hover, #f1f5f9)";
+              e.currentTarget.style.color = "var(--foreground, #0f172a)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#ffffff";
-              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+              e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
             }}
           >
             <X size={18} />
@@ -120,7 +120,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
           gap: "2rem",
           alignContent: "start",
-          backgroundColor: "#f8fafc",
+          backgroundColor: "var(--background, #f8fafc)",
         }}
       >
         {pages.map((page, index) => {
@@ -145,25 +145,25 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                 style={{
                   aspectRatio: `${document.width || 1200} / ${document.height || 800}`,
                   borderRadius: "12px",
-                  border: isActive ? "2.5px solid #2563eb" : "1.5px solid #e2e8f0",
+                  border: isActive ? "2.5px solid var(--primary, #047857)" : "1.5px solid var(--border, #e2e8f0)",
                   boxShadow: isActive
-                    ? "0 0 0 3px rgba(37, 99, 235, 0.25), 0 8px 24px rgba(0,0,0,0.08)"
+                    ? "0 0 0 3px rgba(4, 120, 87, 0.25), 0 8px 24px rgba(0,0,0,0.08)"
                     : "0 4px 16px rgba(0, 0, 0, 0.05)",
                   overflow: "hidden",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
                   position: "relative",
-                  backgroundColor: document.backgroundColor || "#ffffff",
+                  backgroundColor: getPageBackground(document, index),
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
                     e.currentTarget.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.08)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
                     e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.05)";
                   }
                 }}
@@ -172,7 +172,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                   page={page}
                   docWidth={document.width}
                   docHeight={document.height}
-                  backgroundColor={document.backgroundColor}
+                  backgroundColor={getPageBackground(document, index)}
                 />
 
                 {/* Page number badge inside preview card */}
@@ -181,14 +181,14 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                     position: "absolute",
                     bottom: "10px",
                     left: "10px",
-                    backgroundColor: "rgba(255, 255, 255, 0.9)",
+                    backgroundColor: "var(--surface, rgba(255, 255, 255, 0.9))",
                     backdropFilter: "blur(4px)",
-                    color: "#0f172a",
+                    color: "var(--foreground, #0f172a)",
                     fontSize: "12px",
                     fontWeight: 700,
                     padding: "2px 8px",
                     borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--border, #e2e8f0)",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
@@ -209,7 +209,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                   style={{
                     fontSize: "13px",
                     fontWeight: 600,
-                    color: isActive ? "#2563eb" : "#334155",
+                    color: isActive ? "var(--primary, #047857)" : "var(--foreground, #334155)",
                   }}
                 >
                   {page.name || `Page ${index + 1}`}
@@ -228,7 +228,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#64748b",
+                          color: "var(--foreground-muted, #64748b)",
                           cursor: "pointer",
                           padding: "4px",
                         }}
@@ -248,7 +248,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#64748b",
+                          color: "var(--foreground-muted, #64748b)",
                           cursor: "pointer",
                           padding: "4px",
                         }}
@@ -267,7 +267,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                       style={{
                         background: "transparent",
                         border: "none",
-                        color: "#64748b",
+                        color: "var(--foreground-muted, #64748b)",
                         cursor: "pointer",
                         padding: "4px",
                       }}
@@ -286,7 +286,7 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#dc2626",
+                          color: "var(--destructive, #dc2626)",
                           cursor: "pointer",
                           padding: "4px",
                         }}
@@ -308,26 +308,26 @@ export const EditorGridViewModal: React.FC<EditorGridViewModalProps> = ({
             style={{
               aspectRatio: `${document.width || 1200} / ${document.height || 800}`,
               borderRadius: "12px",
-              border: "2px dashed #cbd5e1",
-              backgroundColor: "#ffffff",
+              border: "2px dashed var(--border-strong, #cbd5e1)",
+              backgroundColor: "var(--surface, #ffffff)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
               cursor: "pointer",
-              color: "#64748b",
+              color: "var(--foreground-muted, #64748b)",
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.backgroundColor = "#eff6ff";
-              e.currentTarget.style.color = "#2563eb";
+              e.currentTarget.style.borderColor = "var(--primary, #047857)";
+              e.currentTarget.style.backgroundColor = "var(--surface-hover, #ecfdf5)";
+              e.currentTarget.style.color = "var(--primary, #047857)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#cbd5e1";
-              e.currentTarget.style.backgroundColor = "#ffffff";
-              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.borderColor = "var(--border-strong, #cbd5e1)";
+              e.currentTarget.style.backgroundColor = "var(--surface, #ffffff)";
+              e.currentTarget.style.color = "var(--foreground-muted, #64748b)";
             }}
           >
             <Plus size={24} />

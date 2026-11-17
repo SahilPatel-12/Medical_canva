@@ -43,25 +43,25 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      backgroundColor: "#2563eb",
+      backgroundColor: "var(--primary-solid, #047857)",
       color: "#ffffff",
-      borderColor: "#1d4ed8",
-      boxShadow: "0 1px 2px rgba(37, 99, 235, 0.2)",
+      borderColor: "var(--primary-solid-hover, #065f46)",
+      boxShadow: "0 1px 2px rgba(4, 120, 87, 0.2)",
     },
     secondary: {
-      backgroundColor: "#f1f5f9",
-      color: "#0f172a",
-      borderColor: "#e2e8f0",
+      backgroundColor: "var(--surface-hover, #f1f5f9)",
+      color: "var(--foreground, #0f172a)",
+      borderColor: "var(--border, #e2e8f0)",
     },
     outline: {
-      backgroundColor: "#ffffff",
-      color: "#334155",
-      borderColor: "#cbd5e1",
-      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+      backgroundColor: "var(--surface, #ffffff)",
+      color: "var(--foreground-secondary, #334155)",
+      borderColor: "var(--border-strong, #cbd5e1)",
+      boxShadow: "var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04))",
     },
     ghost: {
       backgroundColor: "transparent",
-      color: "#475569",
+      color: "var(--foreground-muted, #475569)",
       borderColor: "transparent",
     },
     danger: {
@@ -71,7 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
     },
     icon: {
       backgroundColor: "transparent",
-      color: "#475569",
+      color: "var(--foreground-muted, #475569)",
       borderColor: "transparent",
       borderRadius: "6px",
     },

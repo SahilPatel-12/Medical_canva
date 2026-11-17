@@ -29,10 +29,10 @@ export const Tabs: React.FC<TabsProps> = ({
         display: "flex",
         flexDirection: isVertical ? "column" : "row",
         gap: "4px",
-        backgroundColor: "#18181b",
+        backgroundColor: "var(--surface-muted, #f8fafc)",
         padding: "4px",
         borderRadius: "8px",
-        border: "1px solid #27272a",
+        border: "1px solid var(--border, #e2e8f0)",
       }}
     >
       {tabs.map((tab) => {
@@ -51,8 +51,9 @@ export const Tabs: React.FC<TabsProps> = ({
               padding: "6px 12px",
               fontSize: "0.8125rem",
               fontWeight: isActive ? 600 : 500,
-              color: isActive ? "#ffffff" : "#a1a1aa",
-              backgroundColor: isActive ? "#27272a" : "transparent",
+              color: isActive ? "var(--foreground, #0f172a)" : "var(--foreground-muted, #64748b)",
+              backgroundColor: isActive ? "var(--surface, #ffffff)" : "transparent",
+              boxShadow: isActive ? "var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.05))" : "none",
               border: "none",
               borderRadius: "6px",
               cursor: "pointer",

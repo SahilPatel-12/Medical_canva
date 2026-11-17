@@ -205,10 +205,14 @@ export function sanitizePages(pages: Page[] | unknown): Page[] {
         };
       });
 
+    const rawBg = p.backgroundColor;
+    const pageBackground = typeof rawBg === "string" && rawBg.trim().length > 0 ? rawBg.trim() : undefined;
+
     return {
       id: typeof p.id === "string" ? p.id : `page-${index + 1}`,
       name: pageName,
       thumbnail: pageThumbnail,
+      ...(pageBackground ? { backgroundColor: pageBackground } : {}),
       elements,
     };
   });

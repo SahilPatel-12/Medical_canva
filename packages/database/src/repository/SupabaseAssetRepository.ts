@@ -1,13 +1,32 @@
 import { Asset, ElementType } from "@design-platform/types";
-import { getSupabaseClient, SupabaseConfig } from "../client";
+import { getSupabaseClient, getSupabaseAdminClient, SupabaseClient, SupabaseConfig } from "../client";
 import { AssetTableInsert, AssetTableRow, AssetTableUpdate } from "../types";
 
 export class SupabaseAssetRepository {
   private config?: SupabaseConfig;
+  private client?: SupabaseClient;
   private hasLoggedMigrationHint: boolean = false;
 
-  constructor(options?: { config?: SupabaseConfig }) {
+  constructor(options?: { config?: SupabaseConfig; client?: SupabaseClient }) {
     this.config = options?.config;
+    this.client = options?.client;
+  }
+
+  private getClient(): SupabaseClient | null {
+    if (this.client) {
+      return this.client;
+    }
+
+    // Server-side environment: If service role key is present, use privileged admin client to bypass RLS
+    if (typeof window === "undefined" && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        return getSupabaseAdminClient();
+      } catch {
+        // Fallback to standard credentials
+      }
+    }
+
+    return getSupabaseClient(this.config);
   }
 
   public mapRowToAsset(row: AssetTableRow): Asset {
@@ -36,6 +55,10 @@ export class SupabaseAssetRepository {
       subcategoryId,
       subcategorySlug,
       subcategoryName,
+      status: row.status || "published",
+      contentHash: row.content_hash || undefined,
+      version: row.version || 1,
+      createdBy: row.created_by || undefined,
       type: (row.type as ElementType) || "svg",
       source: row.svg_content || row.public_url,
       url: row.public_url,
@@ -69,10 +92,13 @@ export class SupabaseAssetRepository {
 
   public async list(options?: {
     category?: string;
+    categorySlug?: string;
     subcategory?: string;
+    subcategorySlug?: string;
     search?: string;
+    status?: "published" | "draft" | "archived" | "all";
   }): Promise<Asset[]> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) {
       return [];
     }
@@ -80,25 +106,41 @@ export class SupabaseAssetRepository {
     try {
       let query = client.from("assets").select("*").order("created_at", { ascending: false });
 
-      if (options?.category && options.category !== "all") {
+      // Enforce status filtering: default to 'published' (or null for legacy rows) for customer safety
+      if (options?.status && options.status !== "all") {
+        query = query.eq("status", options.status);
+      } else if (!options?.status) {
+        query = query.or("status.eq.published,status.is.null");
+      }
+
+      const catFilter = options?.categorySlug || options?.category;
+      if (catFilter && catFilter !== "all") {
         query = query.or(
-          `category.eq.${options.category},category.ilike.%${options.category}%,tags.cs.{cat:${options.category}},tags.cs.{${options.category}}`
+          `category_slug.eq.${catFilter},category.eq.${catFilter},category.ilike.%${catFilter}%,tags.cs.{cat:${catFilter}},tags.cs.{${catFilter}}`
         );
       }
 
-      if (options?.subcategory && options.subcategory !== "all") {
+      const subcatFilter = options?.subcategorySlug || options?.subcategory;
+      if (subcatFilter && subcatFilter !== "all") {
         query = query.or(
-          `tags.cs.{subcat:${options.subcategory}},tags.cs.{${options.subcategory}}`
+          `subcategory_slug.eq.${subcatFilter},subcategory_id.eq.${subcatFilter},tags.cs.{subcat:${subcatFilter}},tags.cs.{${subcatFilter}}`
         );
       }
 
       if (options?.search && options.search.trim()) {
         const term = options.search.trim();
-        query = query.or(`name.ilike.%${term}%,category.ilike.%${term}%`);
+        query = query.or(`name.ilike.%${term}%,category.ilike.%${term}%,subcategory_name.ilike.%${term}%`);
       }
 
       const { data, error } = await query;
       if (error) {
+        // Fallback query if status column does not exist yet on live DB
+        if (error.message.includes("column") && error.message.includes("status")) {
+          const fallbackRes = await client.from("assets").select("*").order("created_at", { ascending: false });
+          if (fallbackRes.data) {
+            return (fallbackRes.data as AssetTableRow[]).map((r) => this.mapRowToAsset(r));
+          }
+        }
         this.handleMissingTable(error, "list");
         return [];
       }
@@ -111,7 +153,7 @@ export class SupabaseAssetRepository {
   }
 
   public async getById(id: string): Promise<Asset | null> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) return null;
 
     try {
@@ -127,8 +169,67 @@ export class SupabaseAssetRepository {
     }
   }
 
+  public async getByHash(contentHash: string): Promise<Asset | null> {
+    const client = this.getClient();
+    if (!client || !contentHash) return null;
+
+    try {
+      const { data, error } = await client
+        .from("assets")
+        .select("*")
+        .eq("content_hash", contentHash)
+        .maybeSingle();
+
+      if (error) return null;
+      return data ? this.mapRowToAsset(data as AssetTableRow) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public async isAssetReferencedInDesigns(
+    assetId: string,
+    assetUrl?: string
+  ): Promise<{ referenced: boolean; designCount: number; designNames: string[] }> {
+    const client = this.getClient();
+    if (!client) {
+      return { referenced: false, designCount: 0, designNames: [] };
+    }
+
+    try {
+      const { data, error } = await client
+        .from("designs")
+        .select("id, name, pages")
+        .limit(100);
+
+      if (error || !data) {
+        return { referenced: false, designCount: 0, designNames: [] };
+      }
+
+      const matchingDesigns: string[] = [];
+      const searchTerms = [assetId];
+      if (assetUrl) searchTerms.push(assetUrl);
+
+      for (const design of data) {
+        const pagesStr = JSON.stringify(design.pages || []);
+        const isMatch = searchTerms.some((term) => term && pagesStr.includes(term));
+        if (isMatch) {
+          matchingDesigns.push(design.name || design.id);
+        }
+      }
+
+      return {
+        referenced: matchingDesigns.length > 0,
+        designCount: matchingDesigns.length,
+        designNames: matchingDesigns.slice(0, 5),
+      };
+    } catch {
+      return { referenced: false, designCount: 0, designNames: [] };
+    }
+  }
+
   public async create(input: AssetTableInsert): Promise<Asset> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) {
       throw new Error("Supabase client is not configured");
     }
@@ -153,6 +254,10 @@ export class SupabaseAssetRepository {
     if (input.subcategory_id) payload.subcategory_id = input.subcategory_id;
     if (input.subcategory_slug) payload.subcategory_slug = input.subcategory_slug;
     if (input.subcategory_name) payload.subcategory_name = input.subcategory_name;
+    if (input.status) payload.status = input.status;
+    if (input.content_hash) payload.content_hash = input.content_hash;
+    if (input.version !== undefined && input.version !== null) payload.version = input.version;
+    if (input.created_by) payload.created_by = input.created_by;
 
     let res = await client
       .from("assets")
@@ -160,12 +265,16 @@ export class SupabaseAssetRepository {
       .select()
       .single();
 
-    // Fallback if specific taxonomy columns don't exist yet on database table
+    // Fallback if specific taxonomy or lifecycle columns don't exist yet on database table
     if (res.error && (res.error.message.includes("column") || res.error.message.includes("does not exist"))) {
       delete payload.category_slug;
       delete payload.subcategory_id;
       delete payload.subcategory_slug;
       delete payload.subcategory_name;
+      delete payload.status;
+      delete payload.content_hash;
+      delete payload.version;
+      delete payload.created_by;
       res = await client
         .from("assets")
         .insert(payload)
@@ -184,6 +293,17 @@ export class SupabaseAssetRepository {
           "Supabase table 'public.assets' has not been created yet. Please execute 'infrastructure/supabase/migrations/002_create_assets_table.sql' in your Supabase SQL Editor."
         );
       }
+      if (
+        res.error.message.includes("row-level security") ||
+        res.error.message.includes("violates row-level security policy")
+      ) {
+        throw new Error(
+          `Failed to create asset in Supabase: new row violates row-level security policy for table "assets". ` +
+          `To fix this: ` +
+          `1) Add SUPABASE_SERVICE_ROLE_KEY to your .env file so backend API endpoints can bypass RLS, OR ` +
+          `2) Run 'infrastructure/supabase/migrations/010_fix_assets_rls_policy.sql' in your Supabase SQL Editor.`
+        );
+      }
       throw new Error(`Failed to create asset in Supabase: ${res.error.message}`);
     }
 
@@ -191,27 +311,78 @@ export class SupabaseAssetRepository {
   }
 
   public async update(id: string, updates: AssetTableUpdate): Promise<Asset> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) {
       throw new Error("Supabase client is not configured");
     }
 
-    const { data, error } = await client
+    const payload: Record<string, unknown> = { ...updates };
+
+    let res = await client
       .from("assets")
-      .update(updates)
+      .update(payload)
       .eq("id", id)
       .select()
       .single();
 
-    if (error) {
-      throw new Error(`Failed to update asset in Supabase: ${error.message}`);
+    // Fallback if specific lifecycle columns don't exist yet on database table
+    if (res.error && (res.error.message.includes("column") || res.error.message.includes("does not exist"))) {
+      delete payload.status;
+      delete payload.content_hash;
+      delete payload.version;
+      delete payload.created_by;
+      res = await client
+        .from("assets")
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
     }
 
-    return this.mapRowToAsset(data as AssetTableRow);
+    if (res.error) {
+      throw new Error(`Failed to update asset in Supabase: ${res.error.message}`);
+    }
+
+    return this.mapRowToAsset(res.data as AssetTableRow);
+  }
+
+  public async replace(
+    id: string,
+    input: {
+      r2Key: string;
+      publicUrl: string;
+      contentType?: string;
+      sizeBytes?: number;
+      contentHash?: string;
+      svgContent?: string | null;
+      name?: string;
+    }
+  ): Promise<Asset> {
+    const existing = await this.getById(id);
+    if (!existing) {
+      throw new Error(`Asset with id '${id}' not found`);
+    }
+
+    const newVersion = (existing.version || 1) + 1;
+    const updates: AssetTableUpdate = {
+      r2_key: input.r2Key,
+      public_url: input.publicUrl,
+      content_type: input.contentType || existing.contentType,
+      size_bytes: input.sizeBytes !== undefined ? input.sizeBytes : existing.sizeBytes,
+      version: newVersion,
+      svg_content: input.svgContent !== undefined ? input.svgContent : existing.source,
+      thumbnail_url: input.publicUrl,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.contentHash) updates.content_hash = input.contentHash;
+    if (input.name) updates.name = input.name;
+
+    return this.update(id, updates);
   }
 
   public async delete(id: string): Promise<AssetTableRow | null> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) {
       throw new Error("Supabase client is not configured");
     }
@@ -232,7 +403,7 @@ export class SupabaseAssetRepository {
   }
 
   public async getCategories(): Promise<string[]> {
-    const client = getSupabaseClient(this.config);
+    const client = this.getClient();
     if (!client) return ["science", "shapes", "icons", "illustrations"];
 
     try {

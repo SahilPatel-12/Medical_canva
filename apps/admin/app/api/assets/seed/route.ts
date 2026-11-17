@@ -1,12 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getR2StorageDriver } from "@design-platform/storage";
 import { SupabaseAssetRepository } from "@design-platform/database";
 import { SAMPLE_ASSETS } from "@design-platform/editor";
+import { verifyAdminAuth } from "@design-platform/auth";
+import { buildAssetStoragePath } from "../validation";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // 1. Enforce Server-Side Administrative Authorization
+    const authResult = await verifyAdminAuth(request.headers);
+    if (!authResult.authorized) {
+      return NextResponse.json(
+        { success: false, error: authResult.error || "Administrative authorization required to seed assets" },
+        { status: 401 }
+      );
+    }
+
     const storageDriver = getR2StorageDriver();
     const repo = new SupabaseAssetRepository();
     const uploaded = [];
@@ -16,7 +27,13 @@ export async function POST() {
       const isSvg = sample.type === "svg" || sample.source.startsWith("<svg");
       const ext = isSvg ? "svg" : "json";
       const sanitizedName = sample.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const r2Key = `assets/${sample.category}/${sanitizedName}.${ext}`;
+      // Same layout as admin uploads: platform-assets/{category}/{subcategory}/{asset}/{file}
+      const r2Key = buildAssetStoragePath(
+        sample.categorySlug || sample.category.toLowerCase().replace(/\s+/g, "-"),
+        sample.subcategorySlug || "general",
+        sample.id,
+        `${sanitizedName}.${ext}`
+      ).r2Key;
       const contentType = isSvg ? "image/svg+xml" : "application/json";
 
       // Upload SVG to Cloudflare R2
@@ -33,6 +50,10 @@ export async function POST() {
           id: sample.id,
           name: sample.name,
           category: sample.category,
+          category_slug: sample.categorySlug || sample.category.toLowerCase().replace(/\s+/g, "-"),
+          subcategory_id: sample.subcategoryId,
+          subcategory_slug: sample.subcategorySlug,
+          subcategory_name: sample.subcategoryName,
           type: sample.type,
           r2_key: r2Key,
           public_url: uploadRes.publicUrl || storageDriver.getPublicUrl(r2Key),
@@ -43,6 +64,9 @@ export async function POST() {
           tags: sample.tags || [],
           svg_content: isSvg ? sample.source : null,
           thumbnail_url: uploadRes.publicUrl || storageDriver.getPublicUrl(r2Key),
+          status: "published",
+          version: 1,
+          created_by: authResult.userId,
         });
       }
 

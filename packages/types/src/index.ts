@@ -55,14 +55,41 @@ export type Environment = "development" | "test" | "staging" | "production";
 
 export type ElementType = "svg" | "shape" | "text" | "image";
 
-export type ShapeType = "rectangle" | "circle" | "line";
+/** Polygon shapes are drawn from a unit-box outline, so they resize freely */
+export type PolygonShapeType =
+  | "triangle"
+  | "right-triangle"
+  | "diamond"
+  | "pentagon"
+  | "hexagon"
+  | "octagon"
+  | "star"
+  | "plus"
+  | "arrow"
+  | "chevron"
+  | "parallelogram"
+  | "trapezoid";
+
+export type ShapeType = "rectangle" | "circle" | "line" | PolygonShapeType;
+
+/** Ends of a line: plain, arrowhead, flat bar (inhibition ⊣), or dot */
+export type LineCap = "none" | "arrow" | "bar" | "dot";
 
 export interface ShapeProperties {
   shapeType: ShapeType;
+  /** Fill color (for lines: the line color) */
   fill: string;
   stroke?: string;
   strokeWidth?: number;
   cornerRadius?: number;
+  /** Lines and outlines */
+  dash?: "solid" | "dashed" | "dotted";
+  /** Lines only */
+  startCap?: LineCap;
+  endCap?: LineCap;
+  /** Mirrored polygon shapes (triangles, arrows, callouts…) */
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 export interface TextProperties {
@@ -88,6 +115,9 @@ export interface ImageProperties {
   src: string;
   originalSrc?: string;
   crossOrigin?: string;
+  /** Mirrored photo */
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 export type ElementProperties =
@@ -117,6 +147,16 @@ export interface Page {
   name?: string;
   elements: DesignElement[];
   thumbnail?: string;
+  /** This page's background; falls back to the design's `backgroundColor` */
+  backgroundColor?: string;
+}
+
+/** Background color of one page (its own color, else the design-wide one) */
+export function getPageBackground(
+  doc: { backgroundColor?: string; pages?: Page[] } | null | undefined,
+  pageIndex: number
+): string {
+  return doc?.pages?.[pageIndex]?.backgroundColor || doc?.backgroundColor || "#ffffff";
 }
 
 export interface DesignDocument extends BaseEntity {
@@ -162,6 +202,8 @@ export interface AssetCategoryItem {
   subcategories: AssetSubcategoryItem[];
 }
 
+export type AssetStatus = "published" | "draft" | "archived";
+
 export interface Asset {
   id: string;
   name: string;
@@ -171,6 +213,10 @@ export interface Asset {
   subcategoryId?: string;
   subcategorySlug?: string;
   subcategoryName?: string;
+  status?: AssetStatus;
+  contentHash?: string;
+  version?: number;
+  createdBy?: string;
   source: string; // SVG code, shape blueprint, or public URL
   url?: string;
   r2Key?: string;

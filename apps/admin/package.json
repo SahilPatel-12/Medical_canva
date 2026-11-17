@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint app",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "@design-platform/api-client": "workspace:*",
+    "@design-platform/auth": "workspace:*",
     "@design-platform/database": "workspace:*",
     "@design-platform/editor": "workspace:*",
     "@design-platform/storage": "workspace:*",
@@ -29,6 +31,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.6",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
 }
