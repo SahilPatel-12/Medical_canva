@@ -9,7 +9,8 @@ import {
   TextProperties,
 } from "@design-platform/types";
 import { EditorStore, EditorState } from "./EditorStore";
-import { CanvasEngine, CanvasViewportController } from "../canvas/CanvasEngine";
+import { CanvasEngine, CanvasViewportController, TextEditSelection } from "../canvas/CanvasEngine";
+import { replaceTextKeepingStyles, styleAll, type TextStylePatch } from "../text/richText";
 import { fetchSvgMarkup, SvgMatrix } from "../canvas/svgUtils";
 import type { FlipAxis } from "../canvas/svgFlip";
 
@@ -35,6 +36,11 @@ export function useEditor({ initialDocument, repository, isReadOnly = false }: U
   const [state, setState] = useState<EditorState>(() => storeRef.current.getState());
   /** Right-click menu position (viewport pixels); what it offers follows the selection */
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** Text being typed in: its selection and that selection's style (drives the text controls) */
+  const [textEdit, setTextEdit] = useState<TextEditSelection | null>(null);
+  const textEditFrame = useRef<number | null>(null);
+  const pendingTextEdit = useRef<TextEditSelection | null>(null);
+  const lastTextEditKey = useRef("");
 
   /**
    * A click that selects the main group around the current (deeper) selection is held back
@@ -321,6 +327,26 @@ export function useEditor({ initialDocument, repository, isReadOnly = false }: U
       },
       onActivatePage: (pageIndex) => activatePage(pageIndex),
       onElementAutoSize: (id, updates) => storeRef.current.updateElement(id, updates, true),
+      onTextSelectionChange: (info) => {
+        // Selection changes fire continuously while dragging: update at most once a frame
+        pendingTextEdit.current = info;
+        if (!info) {
+          if (textEditFrame.current !== null) cancelAnimationFrame(textEditFrame.current);
+          textEditFrame.current = null;
+          lastTextEditKey.current = "";
+          setTextEdit(null);
+          return;
+        }
+        if (textEditFrame.current !== null) return;
+        textEditFrame.current = requestAnimationFrame(() => {
+          textEditFrame.current = null;
+          const next = pendingTextEdit.current;
+          const key = JSON.stringify(next);
+          if (key === lastTextEditKey.current) return;
+          lastTextEditKey.current = key;
+          setTextEdit(next);
+        });
+      },
       onElementDelete: (id) => {
         if (!isReadOnly) storeRef.current.deleteElement(id);
       },
@@ -853,6 +879,34 @@ export function useEditor({ initialDocument, repository, isReadOnly = false }: U
       storeRef.current.alignSelection(edge),
     distributeSelection: (axis: "horizontal" | "vertical") => storeRef.current.distributeSelection(axis),
     deleteSelection: () => storeRef.current.deleteSelection(),
+    // Rich text
+    /** Selection inside the text box being typed in (null when not typing) */
+    textEdit,
+    /**
+     * Styles text: the selected characters while typing, otherwise the whole text box
+     * (e.g. { fontWeight: "bold" }, { fill: "#e11d48" }, { script: "super" }).
+     */
+    applyTextStyle: (elementId: string, patch: TextStylePatch) => {
+      if (engineRef.current?.applyTextStyleToSelection(elementId, patch)) return;
+      const el = storeRef.current.getElementById(elementId);
+      if (!el || el.type !== "text") return;
+      storeRef.current.updateElement(elementId, { properties: styleAll(el.properties as TextProperties, patch) });
+    },
+    /** Box-level text settings (alignment, line spacing) */
+    updateTextBox: (elementId: string, patch: Partial<TextProperties>) => {
+      if (engineRef.current?.updateEditingTextBox(elementId, patch)) return;
+      const el = storeRef.current.getElementById(elementId);
+      if (!el || el.type !== "text") return;
+      storeRef.current.updateElement(elementId, { properties: { ...(el.properties as TextProperties), ...patch } });
+    },
+    /** Replaces the text (from the inspector) keeping the styles of unchanged parts */
+    setTextContent: (elementId: string, text: string) => {
+      const el = storeRef.current.getElementById(elementId);
+      if (!el || el.type !== "text") return;
+      storeRef.current.updateElement(elementId, {
+        properties: replaceTextKeepingStyles(el.properties as TextProperties, text),
+      });
+    },
     // Right-click menu
     contextMenu,
     openContextMenu: (x: number, y: number) => setContextMenu({ x, y }),

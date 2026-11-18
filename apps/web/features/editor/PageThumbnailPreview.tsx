@@ -1,8 +1,15 @@
 "use client";
 
 import React from "react";
-import { Page, DesignElement, LineCap } from "@design-platform/types";
-import { isPolygonShape, polygonPoints } from "@design-platform/editor";
+import { Page, DesignElement, LineCap, TextProperties } from "@design-platform/types";
+import {
+  canvasMeasurer,
+  drawnSize,
+  isPolygonShape,
+  layoutRichText,
+  polygonPoints,
+  scriptShift,
+} from "@design-platform/editor";
 
 interface PageThumbnailPreviewProps {
   page: Page;
@@ -177,27 +184,31 @@ const MiniElement: React.FC<{ element: DesignElement }> = ({ element }) => {
   }
 
   if (type === "text") {
-    const textProps = properties as {
-      text?: string;
-      fill?: string;
-      fontSize?: number;
-      fontWeight?: string;
-      fontFamily?: string;
-    };
-    const fontSize = textProps.fontSize || 24;
-
+    // Same layout as the canvas: wrapping, alignment and mixed styles
+    const layout = layoutRichText(properties as TextProperties, width, canvasMeasurer);
     return (
-      <text
-        x={x}
-        y={y + fontSize}
-        fontSize={fontSize}
-        fill={textProps.fill || "#000000"}
-        fontWeight={textProps.fontWeight || "normal"}
-        fontFamily={textProps.fontFamily || "Inter, sans-serif"}
-        opacity={elOpacity}
-        transform={transform}
-      >
-        {textProps.text || ""}
+      <text opacity={elOpacity} transform={transform} style={{ whiteSpace: "pre" }}>
+        {layout.lines.flatMap((line, li) =>
+          line.fragments.map((f, fi) => {
+            const st = f.style;
+            const deco = [st.underline ? "underline" : "", st.strike ? "line-through" : ""].filter(Boolean).join(" ");
+            return (
+              <tspan
+                key={`${li}-${fi}`}
+                x={x + f.x}
+                y={y + line.baseline + scriptShift(st)}
+                fontSize={drawnSize(st)}
+                fontFamily={st.fontFamily}
+                fontWeight={st.fontWeight}
+                fontStyle={st.fontStyle}
+                fill={st.fill}
+                textDecoration={deco || undefined}
+              >
+                {f.text}
+              </tspan>
+            );
+          })
+        )}
       </text>
     );
   }

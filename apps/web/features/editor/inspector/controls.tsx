@@ -298,6 +298,8 @@ export interface NumberFieldProps {
   step?: number;
   precision?: number;
   disabled?: boolean;
+  /** Several values at once (e.g. a selection with mixed font sizes): shows "Mixed" */
+  mixed?: boolean;
 }
 
 /** Numeric input: commits on Enter / blur; ↑/↓ step (Shift ×10) */
@@ -312,6 +314,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
   step = 1,
   precision = 0,
   disabled,
+  mixed = false,
 }) => {
   const fmt = (n: number) => {
     const f = Math.pow(10, precision);
@@ -325,12 +328,12 @@ export const NumberField: React.FC<NumberFieldProps> = ({
   const commit = (raw: string) => {
     const n = parseFloat(raw);
     if (isNaN(n)) {
-      setDraft(fmt(value));
+      setDraft(mixed ? "" : fmt(value));
       return;
     }
     const next = clamp(n);
     setDraft(fmt(next));
-    if (Math.abs(next - value) > 1e-9) onCommit(next);
+    if (mixed || Math.abs(next - value) > 1e-9) onCommit(next);
   };
 
   return (
@@ -339,11 +342,12 @@ export const NumberField: React.FC<NumberFieldProps> = ({
       <input
         className="ui-number-input"
         inputMode="decimal"
-        value={focused ? draft : fmt(value)}
+        value={focused ? draft : mixed ? "" : fmt(value)}
+        placeholder={mixed ? "Mixed" : undefined}
         disabled={disabled}
         aria-label={label}
         onFocus={(e) => {
-          setDraft(fmt(value));
+          setDraft(mixed ? "" : fmt(value));
           setFocused(true);
           const input = e.currentTarget;
           requestAnimationFrame(() => input.select());

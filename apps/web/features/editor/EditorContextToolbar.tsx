@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Minus,
   Plus,
-  Bold,
-  Italic,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -28,6 +26,7 @@ import {
   UnlockIcon,
 } from "./icons/EditorIcons";
 import { ColorButton, IconButton, Popover, SliderField, normalizeHex } from "./inspector/controls";
+import { TextFormatButtons, textStyleUiProps, useTextStyleTarget } from "./text/TextStyle";
 
 // ==========================================
 // Contextual toolbar (Canva-style): the most used actions for the current selection,
@@ -206,39 +205,37 @@ const ShapeTools: React.FC<EditorContextToolbarProps> = ({ element: el, onUpdate
 // ---------- Text ----------
 
 const TextTools: React.FC<EditorContextToolbarProps> = ({ element: el, onUpdateElement }) => {
+  const target = useTextStyleTarget(el, onUpdateElement);
+  const s = target.style;
   const p = el.properties as TextProperties;
-  const set = (u: Partial<TextProperties>) => onUpdateElement(el.id, { properties: { ...p, ...u } });
-  const size = p.fontSize || 24;
-  const isBold = p.fontWeight === "bold" || p.fontWeight === "600";
   const align = p.align || "left";
   const nextAlign = align === "left" ? "center" : align === "center" ? "right" : "left";
   return (
-    <>
+    <span className="ctb-group" {...textStyleUiProps}>
       <div className="ctb-stepper" role="group" aria-label="Font size">
-        <IconButton label="Smaller" onClick={() => set({ fontSize: Math.max(6, size - 2) })}>
+        <IconButton label="Smaller" onClick={() => target.apply({ fontSizeDelta: -2 })}>
           <Minus size={14} />
         </IconButton>
-        <span className="ctb-stepper-value">{size}</span>
-        <IconButton label="Larger" onClick={() => set({ fontSize: Math.min(400, size + 2) })}>
+        <span className="ctb-stepper-value" title={s.fontSize === "mixed" ? "Mixed sizes" : undefined}>
+          {s.fontSize === "mixed" ? "–" : Math.round(s.fontSize * 10) / 10}
+        </span>
+        <IconButton label="Larger" onClick={() => target.apply({ fontSizeDelta: 2 })}>
           <Plus size={14} />
         </IconButton>
       </div>
-      <ColorButton label="Text color" value={p.fill || "#18181b"} onChange={(c) => set({ fill: c })} />
-      <IconButton label="Bold" active={isBold} onClick={() => set({ fontWeight: isBold ? "normal" : "bold" })}>
-        <Bold size={16} />
-      </IconButton>
-      <IconButton
-        label="Italic"
-        active={p.fontStyle === "italic"}
-        onClick={() => set({ fontStyle: p.fontStyle === "italic" ? "normal" : "italic" })}
-      >
-        <Italic size={16} />
-      </IconButton>
-      <IconButton label={`Alignment: ${align}`} onClick={() => set({ align: nextAlign })}>
+      <ColorButton
+        label="Text color"
+        value={s.fill === "mixed" ? "" : s.fill}
+        mixedLabel="Mixed"
+        onChange={(c) => target.apply({ fill: c })}
+      />
+      <TextFormatButtons target={target} compact />
+      <span className="ctb-sep ctb-sep--thin" />
+      <IconButton label={`Alignment: ${align}`} onClick={() => target.updateBox({ align: nextAlign })}>
         {align === "center" ? <AlignCenter size={16} /> : align === "right" ? <AlignRight size={16} /> : <AlignLeft size={16} />}
       </IconButton>
       <span className="ctb-sep" />
-    </>
+    </span>
   );
 };
 

@@ -2,6 +2,11 @@ import { Asset, ElementType } from "@design-platform/types";
 import { getSupabaseClient, getSupabaseAdminClient, SupabaseClient, SupabaseConfig } from "../client";
 import { AssetTableInsert, AssetTableRow, AssetTableUpdate } from "../types";
 
+/** Every assets column except the (large) inline SVG markup */
+const ASSET_LIST_COLUMNS =
+  "id,name,category,category_slug,subcategory_id,subcategory_slug,subcategory_name,type,r2_key,public_url," +
+  "content_type,size_bytes,width,height,tags,thumbnail_url,status,content_hash,version,created_by,created_at,updated_at";
+
 export class SupabaseAssetRepository {
   private config?: SupabaseConfig;
   private client?: SupabaseClient;
@@ -97,14 +102,28 @@ export class SupabaseAssetRepository {
     subcategorySlug?: string;
     search?: string;
     status?: "published" | "draft" | "archived" | "all";
+    /**
+     * false: leave out the stored SVG markup (the library then shows the R2 file and loads
+     * the markup only when an asset is used). Keeps the list small: ~1.7 MB instead of ~28 MB
+     * for 1,500 illustrations.
+     */
+    withSvgContent?: boolean;
   }): Promise<Asset[]> {
     const client = this.getClient();
     if (!client) {
       return [];
     }
 
+    const columns = options?.withSvgContent === false ? ASSET_LIST_COLUMNS : "*";
     try {
-      let query = client.from("assets").select("*").order("created_at", { ascending: false });
+      // One request returns at most 1000 rows (Supabase max-rows): read page by page
+      const PAGE = 1000;
+      const buildQuery = () => {
+      let query = client
+        .from("assets")
+        .select(columns)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true });
 
       // Enforce status filtering: default to 'published' (or null for legacy rows) for customer safety
       if (options?.status && options.status !== "all") {
@@ -131,21 +150,37 @@ export class SupabaseAssetRepository {
         const term = options.search.trim();
         query = query.or(`name.ilike.%${term}%,category.ilike.%${term}%,subcategory_name.ilike.%${term}%`);
       }
+      return query;
+      };
 
-      const { data, error } = await query;
-      if (error) {
-        // Fallback query if status column does not exist yet on live DB
-        if (error.message.includes("column") && error.message.includes("status")) {
-          const fallbackRes = await client.from("assets").select("*").order("created_at", { ascending: false });
-          if (fallbackRes.data) {
-            return (fallbackRes.data as AssetTableRow[]).map((r) => this.mapRowToAsset(r));
+      const rows: AssetTableRow[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await buildQuery().range(from, from + PAGE - 1);
+        if (error) {
+          // Fallback query if newer columns (status, slugs…) do not exist yet on the live DB
+          if (error.message.includes("column")) {
+            const fallback: AssetTableRow[] = [];
+            for (let f = 0; ; f += PAGE) {
+              const res = await client
+                .from("assets")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .range(f, f + PAGE - 1);
+              if (res.error || !res.data) break;
+              fallback.push(...(res.data as unknown as AssetTableRow[]));
+              if (res.data.length < PAGE) break;
+            }
+            return fallback.map((r) => this.mapRowToAsset(r));
           }
+          this.handleMissingTable(error, "list");
+          return rows.map((r) => this.mapRowToAsset(r));
         }
-        this.handleMissingTable(error, "list");
-        return [];
+        const page = (data || []) as unknown as AssetTableRow[];
+        rows.push(...page);
+        if (page.length < PAGE) break;
       }
 
-      return (data as AssetTableRow[]).map((r) => this.mapRowToAsset(r));
+      return rows.map((r) => this.mapRowToAsset(r));
     } catch (err) {
       this.handleMissingTable(err, "list");
       return [];
@@ -178,10 +213,13 @@ export class SupabaseAssetRepository {
         .from("assets")
         .select("*")
         .eq("content_hash", contentHash)
-        .maybeSingle();
+        // The same artwork may be filed under several subcategories: any copy counts
+        .order("created_at", { ascending: true })
+        .limit(1);
 
       if (error) return null;
-      return data ? this.mapRowToAsset(data as AssetTableRow) : null;
+      const row = Array.isArray(data) ? data[0] : null;
+      return row ? this.mapRowToAsset(row as AssetTableRow) : null;
     } catch {
       return null;
     }

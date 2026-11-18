@@ -76,17 +76,13 @@ describe("Scientific Taxonomy & Canonical Asset Architecture", () => {
     assert.notEqual(pathProtein.id, pathGraph.id);
   });
 
-  it("should have sample assets mapped to canonical categories and subcategories", () => {
-    assert.ok(SAMPLE_ASSETS.length >= 10);
-    const antibody = SAMPLE_ASSETS.find((a) => a.id === "asset-protein-antibody");
-    assert.ok(antibody);
-    assert.equal(antibody.categorySlug, "proteins");
-    assert.equal(antibody.subcategorySlug, "antibodies");
-
-    const receptor = SAMPLE_ASSETS.find((a) => a.id === "asset-protein-receptor");
-    assert.ok(receptor);
-    assert.equal(receptor.categorySlug, "proteins");
-    assert.equal(receptor.subcategorySlug, "receptors-and-ligands");
+  it("ships only basic shapes as built-in assets (the scientific library comes from the asset store)", () => {
+    assert.equal(SAMPLE_ASSETS.length, 5);
+    for (const asset of SAMPLE_ASSETS) {
+      assert.equal(asset.categorySlug, "arrows-and-shapes");
+      const category = CANONICAL_TAXONOMY.find((c) => c.slug === asset.categorySlug);
+      assert.ok(category?.subcategories.some((s) => s.slug === asset.subcategorySlug), asset.id);
+    }
   });
 });
 

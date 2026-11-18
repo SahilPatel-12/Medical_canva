@@ -11,6 +11,26 @@ import {
 } from "@design-platform/types";
 import { loadSvgImage, loadUrlImage, SvgLayerGeometry } from "./svgUtils";
 import { dashPattern, isPolygonShape, polygonPoints } from "../elements/shapeGeometry";
+import { RichTextNode } from "../text/RichTextNode";
+import {
+  normalizeTextProps,
+  rangeStyle,
+  styleRange,
+  boxStyle,
+  getRuns,
+  type RangeStyle,
+  type TextStyleKey,
+  type TextStylePatch,
+} from "../text/richText";
+import {
+  cssForStyle,
+  domToRuns,
+  getSelectionOffsets,
+  insertPlainText,
+  needsNormalizing,
+  runsToHtml,
+  setSelectionOffsets,
+} from "../text/richTextDom";
 
 export interface PointerModifiers {
   /** Cmd/Ctrl held: select the deepest layer under the cursor */
@@ -75,12 +95,30 @@ export interface CanvasEngineCallbacks {
    * canvas); `client` is the viewport position for placing the menu.
    */
   onContextMenu?: (info: CanvasContextMenuInfo) => void;
+  /**
+   * Typing in a text box: the selected characters and their style (null when typing ends).
+   * Lets style controls show and change the style of just the selection.
+   */
+  onTextSelectionChange?: (info: TextEditSelection | null) => void;
   /** A text box was emptied while typing: the element should be removed */
   onElementDelete?: (elementId: string) => void;
   /** Size the canvas measured itself (auto-height text); applied without an undo step */
   onElementAutoSize?: (elementId: string, updates: Partial<DesignElement>) => void;
   isReadOnly?: boolean;
 }
+
+export interface TextEditSelection {
+  elementId: string;
+  start: number;
+  end: number;
+  /** Length of the text being edited */
+  length: number;
+  /** Style of the selection (or of the character before the caret) */
+  style: RangeStyle;
+}
+
+/** Marks controls that style the text being typed (clicking them keeps the editor open) */
+export const TEXT_STYLE_UI_ATTR = "data-text-style-ui";
 
 export interface CanvasContextMenuInfo {
   elementId: string | null;
@@ -200,7 +238,17 @@ export class CanvasEngine {
   } | null = null;
   private suppressEmptyClick = false;
   /** In-place text editor (textarea over a text element) */
-  private textEditor: { id: string; textarea: HTMLTextAreaElement; original: string } | null = null;
+  private textEditor: {
+    id: string;
+    el: HTMLDivElement;
+    /** Properties when typing started (base style + runs) */
+    original: TextProperties;
+    /** Box-level style while editing (whole-box changes made during typing land here) */
+    box: TextProperties;
+    /** Last selection inside the editor (kept while a style control has focus) */
+    selection: { start: number; end: number };
+    cleanup: () => void;
+  } | null = null;
   private layerProxy: Konva.Rect | null = null;
   private hoverRect: Konva.Rect | null = null;
   private proxyStart: Konva.Transform | null = null;
@@ -807,7 +855,7 @@ export class CanvasEngine {
       // Height follows the text (no clipped lines); the store is told the measured height
       const { height: _ignored, ...textCommon } = commonProps;
       void _ignored;
-      const text = new Konva.Text({ ...textCommon, wrap: "word" });
+      const text = new RichTextNode({ ...textCommon, wrap: "word" });
       applyTextAttrs(text, props);
       return text;
     }
@@ -1010,13 +1058,18 @@ export class CanvasEngine {
         const el = this.findElement(elementId);
         const props = (el?.properties || {}) as TextProperties;
         const fontScale = Math.abs(scaleY - 1) > 0.001 ? scaleY : 1;
-        const fontSize = Math.max(4, Math.round((props.fontSize || node.fontSize()) * fontScale * 10) / 10);
+        const scaleSize = (v: number) => Math.max(4, Math.round(v * fontScale * 10) / 10);
+        const fontSize = scaleSize(props.fontSize || node.fontSize());
+        // Styled parts with their own size grow with the box too
+        const runs = props.runs?.map((r) =>
+          r.style?.fontSize ? { ...r, style: { ...r.style, fontSize: scaleSize(r.style.fontSize) } } : r
+        );
         this.reportChange(elementId, {
           x: Math.round(node.x()),
           y: Math.round(node.y()),
           width: Math.max(20, Math.round(node.width() * scaleX)),
           rotation: Math.round(node.rotation()),
-          ...(fontScale !== 1 ? { properties: { ...props, fontSize } } : {}),
+          ...(fontScale !== 1 ? { properties: { ...props, fontSize, ...(runs ? { runs } : {}) } } : {}),
         });
         return;
       }
@@ -2014,7 +2067,7 @@ export class CanvasEngine {
     return Boolean(this.textEditor);
   }
 
-  /** Opens a text box for typing right on the canvas */
+  /** Opens a text box for typing right on the canvas (styled parts stay styled) */
   public editText(elementId: string): void {
     if (this.isReadOnly || typeof document === "undefined") return;
     const node = this.nodeMap.get(elementId);
@@ -2022,48 +2075,216 @@ export class CanvasEngine {
     if (!(node instanceof Konva.Text) || !el || el.locked) return;
     this.finishTextEdit(true);
 
-    const props = el.properties as TextProperties;
-    const textarea = document.createElement("textarea");
-    // One row by default: the box grows with the text instead of starting two lines tall
-    textarea.rows = 1;
-    textarea.value = props.text || "";
-    textarea.setAttribute("aria-label", "Edit text");
-    textarea.spellcheck = true;
-    Object.assign(textarea.style, {
+    const props = { ...(el.properties as TextProperties) };
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    editor.setAttribute("role", "textbox");
+    editor.setAttribute("aria-multiline", "true");
+    editor.setAttribute("aria-label", "Edit text");
+    editor.spellcheck = true;
+    Object.assign(editor.style, {
       position: "absolute",
       margin: "0",
       padding: "0",
       border: "none",
       outline: "none",
       background: "transparent",
-      resize: "none",
-      overflow: "hidden",
       whiteSpace: "pre-wrap",
       overflowWrap: "break-word",
       transformOrigin: "left top",
       zIndex: "5",
       caretColor: "#047857",
       boxShadow: "0 0 0 1.5px #10b981",
+      minHeight: "1em",
+      cursor: "text",
     } as Partial<CSSStyleDeclaration>);
-    this.container.appendChild(textarea);
-    this.textEditor = { id: elementId, textarea, original: props.text || "" };
+    this.container.appendChild(editor);
+
+    const state = {
+      id: elementId,
+      el: editor,
+      original: props,
+      box: props,
+      selection: { start: 0, end: (props.text || "").length },
+      cleanup: () => {},
+    };
+    this.textEditor = state;
+    this.renderTextEditor();
 
     node.visible(false);
     this.transformer?.visible(false);
     this.layer?.batchDraw();
     this.positionTextEditor();
 
-    textarea.addEventListener("input", () => this.positionTextEditor());
-    textarea.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) {
-        e.preventDefault();
-        textarea.blur();
+    const onInput = () => {
+      if (needsNormalizing(editor)) {
+        // The browser added its own markup (paragraphs, <font>…): rebuild from the runs
+        const sel = getSelectionOffsets(editor);
+        state.box = { ...state.box, ...normalizeTextProps(state.box, domToRuns(editor)) };
+        this.renderTextEditor();
+        if (sel) setSelectionOffsets(editor, sel.start, sel.end);
       }
-    });
-    textarea.addEventListener("blur", () => this.finishTextEdit(true));
-    textarea.focus();
-    textarea.select();
+      this.positionTextEditor();
+      this.emitTextSelection();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      e.stopPropagation();
+      const mod = e.metaKey || e.ctrlKey;
+      if (e.key === "Escape" || (e.key === "Enter" && mod)) {
+        e.preventDefault();
+        this.finishTextEdit(true);
+        return;
+      }
+      if (e.key === "Enter") {
+        // A plain newline character (keeps the editor's text equal to the runs' text)
+        e.preventDefault();
+        insertPlainText(editor, "\n");
+        onInput();
+        return;
+      }
+      // Formatting shortcuts apply to the selection
+      const key = e.key.toLowerCase();
+      const cur = this.getTextEditSelection()?.style;
+      if (mod && !e.altKey && cur) {
+        let patch: Partial<Record<TextStyleKey, unknown>> | null = null;
+        if (key === "b") patch = { fontWeight: cur.fontWeight === "bold" ? "normal" : "bold" };
+        else if (key === "i") patch = { fontStyle: cur.fontStyle === "italic" ? "normal" : "italic" };
+        else if (key === "u") patch = { underline: cur.underline !== true };
+        else if (e.shiftKey && (key === "x" || e.code === "KeyX")) patch = { strike: cur.strike !== true };
+        else if (e.code === "Period" || e.code === "Comma") {
+          const script = e.code === "Period" ? "super" : "sub";
+          patch = { script: cur.script === script ? "normal" : script };
+        }
+        if (patch) {
+          e.preventDefault();
+          this.applyTextStyleToSelection(elementId, patch);
+        }
+      }
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const text = e.clipboardData?.getData("text/plain") || "";
+      if (text) {
+        insertPlainText(editor, text.replace(/\r\n?/g, "\n"));
+        onInput();
+      }
+    };
+    const onSelectionChange = () => {
+      const sel = getSelectionOffsets(editor);
+      if (!sel) return;
+      state.selection = sel;
+      this.emitTextSelection();
+    };
+    const isStyleUi = (t: EventTarget | null) =>
+      Boolean(t && (t as Element).closest?.(`[${TEXT_STYLE_UI_ATTR}], .ui-popover`));
+    const onBlur = (e: FocusEvent) => {
+      // Focus went to a style control (font size field, color input…): keep typing session
+      if (isStyleUi(e.relatedTarget)) return;
+      // A click elsewhere ends it (handled by the pointer listener when focus stays put)
+      setTimeout(() => {
+        if (this.textEditor === state && document.activeElement !== editor && !isStyleUi(document.activeElement)) {
+          this.finishTextEdit(true);
+        }
+      }, 0);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (editor.contains(t) || isStyleUi(e.target)) return;
+      this.finishTextEdit(true);
+    };
+    editor.addEventListener("input", onInput);
+    editor.addEventListener("keydown", onKeyDown);
+    editor.addEventListener("paste", onPaste);
+    editor.addEventListener("blur", onBlur);
+    document.addEventListener("selectionchange", onSelectionChange);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    state.cleanup = () => {
+      document.removeEventListener("selectionchange", onSelectionChange);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+
+    editor.focus();
+    setSelectionOffsets(editor, 0, (props.text || "").length);
+    state.selection = { start: 0, end: (props.text || "").length };
+    this.emitTextSelection();
+  }
+
+  /** Re-renders the editor's content from the current box style + runs */
+  private renderTextEditor(runs?: ReturnType<typeof getRuns>): void {
+    const editor = this.textEditor;
+    if (!editor) return;
+    const props = runs ? { ...editor.box, text: runs.map((r) => r.text).join(""), runs } : editor.box;
+    editor.el.innerHTML = runsToHtml(props);
+    // Base style for newly typed text; each span carries its own full style
+    for (const decl of cssForStyle({ ...boxStyle(editor.box), underline: false, strike: false }).split(";")) {
+      const i = decl.indexOf(":");
+      if (i > 0) editor.el.style.setProperty(decl.slice(0, i), decl.slice(i + 1));
+    }
+    editor.el.style.lineHeight = String(editor.box.lineHeight || 1.2);
+    editor.el.style.textAlign = editor.box.align || "left";
+  }
+
+  /** Current text + styles in the editor */
+  private editorProps(): TextProperties | null {
+    const editor = this.textEditor;
+    if (!editor) return null;
+    return normalizeTextProps(editor.box, domToRuns(editor.el));
+  }
+
+  /** The selection being typed in, with its style (null when no text box is being edited) */
+  public getTextEditSelection(): TextEditSelection | null {
+    const editor = this.textEditor;
+    const props = this.editorProps();
+    if (!editor || !props) return null;
+    const len = (props.text || "").length;
+    const start = Math.min(editor.selection.start, len);
+    const end = Math.min(editor.selection.end, len);
+    return { elementId: editor.id, start, end, length: len, style: rangeStyle(props, start, end) };
+  }
+
+  private emitTextSelection(): void {
+    this.callbacks.onTextSelectionChange?.(this.getTextEditSelection());
+  }
+
+  /**
+   * Styles the selected characters of the text box being edited. With only a caret, the
+   * whole text is styled. Returns false when that text box is not being edited.
+   */
+  public applyTextStyleToSelection(elementId: string, patch: TextStylePatch): boolean {
+    const editor = this.textEditor;
+    if (!editor || editor.id !== elementId) return false;
+    const props = this.editorProps();
+    if (!props) return false;
+    const len = (props.text || "").length;
+    let { start, end } = editor.selection;
+    start = Math.min(start, len);
+    end = Math.min(end, len);
+    const whole = start === end;
+    const next = styleRange(props, whole ? 0 : start, whole ? len : end, patch);
+    // Box-level values (lifted when every character shares them) become the editor's base
+    editor.box = { ...next };
+    this.renderTextEditor(getRuns(next));
+    this.positionTextEditor();
+    if (document.activeElement !== editor.el) editor.el.focus({ preventScroll: true });
+    setSelectionOffsets(editor.el, start, end);
+    editor.selection = { start, end };
+    this.emitTextSelection();
+    return true;
+  }
+
+  /** Box-level text property change while typing (alignment, line spacing) */
+  public updateEditingTextBox(elementId: string, patch: Partial<TextProperties>): boolean {
+    const editor = this.textEditor;
+    if (!editor || editor.id !== elementId) return false;
+    const props = this.editorProps();
+    if (!props) return false;
+    editor.box = { ...props, ...patch };
+    const sel = editor.selection;
+    this.renderTextEditor(getRuns(editor.box));
+    this.positionTextEditor();
+    setSelectionOffsets(editor.el, sel.start, sel.end);
+    this.emitTextSelection();
+    return true;
   }
 
   private positionTextEditor(): void {
@@ -2072,53 +2293,45 @@ export class CanvasEngine {
     const node = this.nodeMap.get(editor.id);
     const el = this.findElement(editor.id);
     if (!(node instanceof Konva.Text) || !el) return;
-    const props = el.properties as TextProperties;
     const scale = this.stage.scaleX();
     const pos = node.getAbsolutePosition();
-    const ta = editor.textarea;
-    const lineHeight = props.lineHeight || 1.2;
-    Object.assign(ta.style, {
+    // Laid out in page pixels and scaled as a whole: sizes match the canvas exactly
+    Object.assign(editor.el.style, {
       left: `${pos.x}px`,
       top: `${pos.y}px`,
-      width: `${node.width() * scale}px`,
-      fontSize: `${(props.fontSize || 24) * scale}px`,
-      fontFamily: props.fontFamily || "Inter, -apple-system, sans-serif",
-      fontWeight: props.fontWeight === "bold" ? "700" : props.fontWeight || "400",
-      fontStyle: props.fontStyle === "italic" ? "italic" : "normal",
-      lineHeight: String(lineHeight),
-      color: props.fill || "#18181b",
-      textAlign: props.align || "left",
-      transform: `rotate(${el.rotation || 0}deg)`,
+      width: `${node.width()}px`,
+      transform: `scale(${scale}) rotate(${el.rotation || 0}deg)`,
     } as Partial<CSSStyleDeclaration>);
-    // Measure the content height (collapse first so scrollHeight is the text, not the old box)
-    ta.style.height = "0px";
-    const oneLine = Math.ceil((props.fontSize || 24) * lineHeight * scale);
-    ta.style.height = `${Math.max(ta.scrollHeight, oneLine)}px`;
   }
 
-  /** Closes the text editor, saving the text. Emptied text boxes are removed (like Canva). */
+  /** Closes the text editor, saving the text and its styles. Emptied text boxes are removed. */
   public finishTextEdit(save: boolean): void {
     const editor = this.textEditor;
     if (!editor) return;
+    const next = save ? this.editorProps() : null;
     this.textEditor = null;
-    const { id, textarea, original } = editor;
-    const value = textarea.value;
-    textarea.remove();
+    editor.cleanup();
+    editor.el.remove();
+    const { id, original } = editor;
     const node = this.nodeMap.get(id);
     node?.visible(true);
     this.transformer?.visible(true);
     this.layer?.batchDraw();
+    this.callbacks.onTextSelectionChange?.(null);
     const el = this.findElement(id);
-    if (!save || !el) return;
-    if (value.trim().length === 0) {
+    if (!save || !el || !next) return;
+    if ((next.text || "").trim().length === 0) {
       if (this.callbacks.onElementDelete) {
         this.deselect();
         this.callbacks.onElementDelete(id);
       }
       return;
     }
-    if (value !== original) {
-      this.callbacks.onElementChange(id, { properties: { ...(el.properties as TextProperties), text: value } });
+    const changed = JSON.stringify(normalizeTextProps(original)) !== JSON.stringify(next);
+    if (changed) {
+      const props = { ...(el.properties as TextProperties) };
+      delete props.runs;
+      this.callbacks.onElementChange(id, { properties: { ...props, ...next } });
     }
   }
 
@@ -2232,6 +2445,9 @@ function applyTextAttrs(node: Konva.Text, props: TextProperties): void {
     align: props.align || "left",
     fontStyle: style,
     lineHeight: props.lineHeight || 1.2,
+    textDecoration: [props.underline ? "underline" : "", props.strike ? "line-through" : ""].filter(Boolean).join(" "),
+    // Mixed styles: RichTextNode lays these out itself
+    richProps: props.runs ? props : undefined,
   });
 }
 

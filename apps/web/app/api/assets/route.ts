@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
       subcategorySlug,
       search,
       status: "published",
+      // The library shows R2 files; markup is fetched when an asset is used
+      withSvgContent: false,
     });
     const categories = await repo.getCategories();
 

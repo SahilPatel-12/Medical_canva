@@ -10,6 +10,10 @@ export * from "./canvas/svgUtils";
 export * from "./canvas/svgColors";
 export * from "./canvas/svgFlip";
 
+// Rich text
+export * from "./text/richText";
+export { canvasMeasurer } from "./text/RichTextNode";
+
 // Elements & Sample Library
 export * from "./elements/sampleAssets";
 export * from "./elements/taxonomy";

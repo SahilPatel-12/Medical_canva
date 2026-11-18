@@ -128,11 +128,14 @@ export function sanitizeProperties(props: unknown): ElementProperties {
     }
 
     if (Array.isArray(value)) {
-      clean[key] = value.filter(
-        (item) =>
-          (typeof item === "string" || typeof item === "number" || typeof item === "boolean") &&
-          !isDomOrFiberNode(item)
-      );
+      // Primitives as they are; plain objects (e.g. rich text runs) cleaned deeply
+      clean[key] = value
+        .map((item) =>
+          typeof item === "string" || typeof item === "number" || typeof item === "boolean"
+            ? item
+            : sanitizeObjectDeep(item, new Set([props, value]))
+        )
+        .filter((item) => item !== undefined);
       continue;
     }
 

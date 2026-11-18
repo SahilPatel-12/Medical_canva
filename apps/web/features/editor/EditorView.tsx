@@ -16,6 +16,7 @@ import { EditorContextToolbar } from "./EditorContextToolbar";
 import { MultiSelectionActions, MultiSelectionToolbar } from "./inspector/MultiSelection";
 import { EditorContextMenu, buildCanvasMenu } from "./EditorContextMenu";
 import { KeyboardShortcutsDialog, useEditorShortcuts } from "./KeyboardShortcuts";
+import { TextStyleContext } from "./text/TextStyle";
 import type { ElementTemplate } from "./panels/elementTemplates";
 import { Button } from "@design-platform/ui";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
@@ -257,7 +258,17 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
     alignSelectionToPage,
     selectAll,
     canEnterGroup,
+    textEdit,
+    applyTextStyle,
+    updateTextBox,
+    setTextContent,
   } = useEditor({ initialDocument, repository, isReadOnly });
+  const textStyleApi = useMemo(
+    () => ({ textEdit, applyTextStyle, updateTextBox, setTextContent }),
+    // The functions are rebuilt every render; only the selection matters for consumers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [textEdit]
+  );
 
   // Several elements selected: shared actions for the toolbar and the inspector
   const selectedSet = new Set(selectedIds);
@@ -407,6 +418,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
   }, [state.saveStatus, save, effectiveReadOnly]);
 
   return (
+    <TextStyleContext.Provider value={textStyleApi}>
     <div
       style={{
         display: "flex",
@@ -607,5 +619,6 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
         designName={state.document.name}
       />
     </div>
+    </TextStyleContext.Provider>
   );
 };

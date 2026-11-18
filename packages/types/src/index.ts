@@ -92,7 +92,27 @@ export interface ShapeProperties {
   flipY?: boolean;
 }
 
+/** Style of part of a text box; unset keys use the text box's own style */
+export interface TextRunStyle {
+  fontWeight?: "normal" | "bold" | "600" | "500";
+  fontStyle?: "normal" | "italic";
+  fill?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  underline?: boolean;
+  strike?: boolean;
+  /** Superscript (x²) / subscript (H₂O) */
+  script?: "normal" | "super" | "sub";
+}
+
+/** A piece of text with its own style (rich text, like Figma / Canva) */
+export interface TextRun {
+  text: string;
+  style?: TextRunStyle;
+}
+
 export interface TextProperties {
+  /** Plain text (always the full text, also when `runs` style parts of it) */
   text: string;
   fontSize: number;
   fontFamily: string;
@@ -101,6 +121,10 @@ export interface TextProperties {
   fontWeight?: "normal" | "bold" | "600" | "500";
   fontStyle?: "normal" | "italic";
   lineHeight?: number;
+  underline?: boolean;
+  strike?: boolean;
+  /** Mixed styles: runs whose texts join up to `text`. Absent for single-style text. */
+  runs?: TextRun[];
 }
 
 export interface SvgProperties {

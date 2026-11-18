@@ -2382,3 +2382,37 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================
+   Rich text controls
+   ========================================== */
+.ctb-group {
+  display: contents;
+}
+.ctb-sep--thin {
+  margin: 0 2px;
+  opacity: 0.6;
+}
+/* Part of the selection has the style: a dashed hint instead of the full "on" look */
+.ui-icon-button.is-mixed,
+.is-mixed {
+  box-shadow: inset 0 0 0 1px var(--primary-border, #a7f3d0);
+  border-radius: 6px;
+}
+.insp-format {
+  display: flex;
+  width: 100%;
+  margin-top: 8px;
+}
+.insp-format > * {
+  flex: 1;
+}
+.insp-text-scope {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--primary-subtle, #ecfdf5);
+  color: var(--primary, #047857);
+  font-size: 11.5px;
+  font-weight: 500;
+}

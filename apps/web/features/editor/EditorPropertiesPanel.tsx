@@ -32,8 +32,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Bold,
-  Italic,
   Minus,
   Plus,
   ChevronRight,
@@ -68,6 +66,7 @@ import {
   normalizeHex,
 } from "./inspector/controls";
 import { MultiSelectionActions, MultiSelectionInspector } from "./inspector/MultiSelection";
+import { TextFormatButtons, TextScopeHint, textStyleUiProps, useTextStyleTarget } from "./text/TextStyle";
 
 export interface EditorPropertiesPanelProps {
   document: DesignDocument;
@@ -657,27 +656,35 @@ const SvgPartInspector: React.FC<ElementInspectorProps & { markup: string }> = (
 
 const TextInspector: React.FC<ElementInspectorProps> = ({ element: el, onUpdateElement, documentColors }) => {
   const p = el.properties as TextProperties;
-  const set = (updates: Partial<TextProperties>) => onUpdateElement(el.id, { properties: { ...p, ...updates } });
-  const size = p.fontSize || 24;
-  const isBold = p.fontWeight === "bold" || p.fontWeight === "600";
-  const family = FONT_FAMILIES.find((f) => f.value === p.fontFamily)?.value || p.fontFamily || FONT_FAMILIES[0]!.value;
-  const [text, setText] = useState(p.text || "");
+  const target = useTextStyleTarget(el, onUpdateElement);
+  const s = target.style;
+  const familyValue = s.fontFamily === "mixed" ? "" : s.fontFamily;
+  const family = FONT_FAMILIES.find((f) => f.value === familyValue)?.value || familyValue;
+  const sizeMixed = s.fontSize === "mixed";
+  const size = sizeMixed ? 24 : (s.fontSize as number);
 
   return (
-    <>
+    <div {...textStyleUiProps}>
       <Section title="Text">
         <textarea
+          key={`${el.id}:${p.text}`}
           className="ui-input insp-textarea"
-          value={text}
+          defaultValue={p.text || ""}
           rows={3}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => text !== p.text && set({ text })}
+          onBlur={(e) => e.currentTarget.value !== p.text && target.setText(e.currentTarget.value)}
           aria-label="Text content"
         />
       </Section>
       <Section title="Font">
-        <select className="ui-input ui-select" value={family} onChange={(e) => set({ fontFamily: e.target.value })} aria-label="Font">
-          {!FONT_FAMILIES.some((f) => f.value === family) && <option value={family}>{family.split(",")[0]}</option>}
+        <TextScopeHint target={target} />
+        <select
+          className="ui-input ui-select"
+          value={family}
+          onChange={(e) => target.apply({ fontFamily: e.target.value })}
+          aria-label="Font"
+        >
+          {s.fontFamily === "mixed" && <option value="">Mixed fonts</option>}
+          {family && !FONT_FAMILIES.some((f) => f.value === family) && <option value={family}>{family.split(",")[0]}</option>}
           {FONT_FAMILIES.map((f) => (
             <option key={f.value} value={f.value}>
               {f.label}
@@ -686,29 +693,34 @@ const TextInspector: React.FC<ElementInspectorProps> = ({ element: el, onUpdateE
         </select>
         <div className="insp-row">
           <div className="insp-stepper">
-            <IconButton label="Smaller" onClick={() => set({ fontSize: Math.max(6, size - 2) })}>
+            <IconButton label="Smaller" onClick={() => target.apply({ fontSizeDelta: -2 })}>
               <Minus size={14} />
             </IconButton>
-            <NumberField label="Font size" value={size} min={6} max={400} onCommit={(v) => set({ fontSize: v })} />
-            <IconButton label="Larger" onClick={() => set({ fontSize: Math.min(400, size + 2) })}>
+            <NumberField
+              label="Font size"
+              value={size}
+              mixed={sizeMixed}
+              min={4}
+              max={800}
+              precision={1}
+              onCommit={(v) => target.apply({ fontSize: v })}
+            />
+            <IconButton label="Larger" onClick={() => target.apply({ fontSizeDelta: 2 })}>
               <Plus size={14} />
             </IconButton>
           </div>
-          <ColorButton label="Text color" value={p.fill || "#18181b"} onChange={(c) => set({ fill: c })} documentColors={documentColors} />
+          <ColorButton
+            label="Text color"
+            value={s.fill === "mixed" ? "" : s.fill}
+            mixedLabel="Mixed"
+            onChange={(c) => target.apply({ fill: c })}
+            documentColors={documentColors}
+          />
+        </div>
+        <div className="ui-segmented insp-format" role="group" aria-label="Style">
+          <TextFormatButtons target={target} size={15} />
         </div>
         <div className="insp-row">
-          <div className="ui-segmented" role="group" aria-label="Style">
-            <IconButton label="Bold" active={isBold} onClick={() => set({ fontWeight: isBold ? "normal" : "bold" })}>
-              <Bold size={15} />
-            </IconButton>
-            <IconButton
-              label="Italic"
-              active={p.fontStyle === "italic"}
-              onClick={() => set({ fontStyle: p.fontStyle === "italic" ? "normal" : "italic" })}
-            >
-              <Italic size={15} />
-            </IconButton>
-          </div>
           <div className="ui-segmented" role="group" aria-label="Alignment">
             {(
               [
@@ -717,7 +729,7 @@ const TextInspector: React.FC<ElementInspectorProps> = ({ element: el, onUpdateE
                 ["right", <AlignRight key="r" size={15} />],
               ] as const
             ).map(([a, icon]) => (
-              <IconButton key={a} label={`Align ${a}`} active={(p.align || "left") === a} onClick={() => set({ align: a })}>
+              <IconButton key={a} label={`Align ${a}`} active={(p.align || "left") === a} onClick={() => target.updateBox({ align: a })}>
                 {icon}
               </IconButton>
             ))}
@@ -729,10 +741,10 @@ const TextInspector: React.FC<ElementInspectorProps> = ({ element: el, onUpdateE
           min={0.8}
           max={3}
           step={0.1}
-          onChange={(v) => set({ lineHeight: v })}
+          onChange={(v) => target.updateBox({ lineHeight: v })}
         />
       </Section>
-    </>
+    </div>
   );
 };
 
