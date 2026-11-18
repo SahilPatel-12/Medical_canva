@@ -16,6 +16,7 @@ import { EditorContextToolbar } from "./EditorContextToolbar";
 import { MultiSelectionActions, MultiSelectionToolbar } from "./inspector/MultiSelection";
 import { EditorContextMenu, buildCanvasMenu } from "./EditorContextMenu";
 import { KeyboardShortcutsDialog, useEditorShortcuts } from "./KeyboardShortcuts";
+import { PresentationMode } from "./PresentationMode";
 import { TextStyleContext } from "./text/TextStyle";
 import type { ElementTemplate } from "./panels/elementTemplates";
 import { Button } from "@design-platform/ui";
@@ -180,6 +181,8 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>("assets");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  /** Page the presentation opened on; null while not presenting */
+  const [presentFrom, setPresentFrom] = useState<number | null>(null);
 
   const {
     containerRef,
@@ -390,11 +393,19 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
 
   const effectiveReadOnly = isReadOnly || !hasEditPermission;
 
-  // One-key inserts (T, R, C, L, A) and "?" for the shortcuts sheet
+  const startPresenting = () => {
+    closeContextMenu();
+    setIsGridViewOpen(false);
+    setIsShortcutsOpen(false);
+    setPresentFrom(activePageIndex);
+  };
+
+  // One-key inserts (T, R, C, L, A), "?" for the shortcuts sheet, Ctrl/⌘+Alt+P to present
   useEditorShortcuts({
-    enabled: !effectiveReadOnly && !isShortcutsOpen,
+    enabled: !effectiveReadOnly && !isShortcutsOpen && presentFrom === null,
     onInsert: insertFromTemplate,
     onOpenHelp: () => setIsShortcutsOpen(true),
+    onPresent: presentFrom === null ? startPresenting : undefined,
   });
 
   // Automatically reveal properties panel when an element or subcomponent is selected
@@ -472,6 +483,7 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
         collaborators={collaborators}
         connectionStatus={connectionStatus}
         canManageShare={!isReadOnly}
+        onPresent={startPresenting}
       />
 
       {/* Main Studio Body: Contextual Left Panel + Expanded Center Canvas */}
@@ -600,6 +612,17 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
       />
 
       <KeyboardShortcutsDialog open={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+
+      {presentFrom !== null && (
+        <PresentationMode
+          document={state.document}
+          startIndex={presentFrom}
+          onExit={(pageIndex) => {
+            setPresentFrom(null);
+            if (pageIndex !== activePageIndex) setActivePage(pageIndex);
+          }}
+        />
+      )}
 
       {contextMenu && canvasMenu && !effectiveReadOnly && (
         <EditorContextMenu

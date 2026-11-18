@@ -45,6 +45,12 @@ export function formatKeys(spec: string): string[] {
     esc: ["Esc", "Esc"],
     space: ["Space", "Space"],
     arrows: ["← ↑ → ↓", "← ↑ → ↓"],
+    left: ["←", "←"],
+    right: ["→", "→"],
+    home: ["Home", "Home"],
+    end: ["End", "End"],
+    pgup: ["Page Up", "Page Up"],
+    pgdn: ["Page Down", "Page Down"],
     plus: ["+", "+"],
     minus: ["−", "−"],
   };
@@ -58,6 +64,19 @@ interface ShortcutRow {
   /** Mouse gesture instead of keys */
   gesture?: string;
 }
+
+/** Keys while presenting (listed on the sheet and in the presenter's own help) */
+export const PRESENT_SHORTCUTS: ShortcutRow[] = [
+  { label: "Next page", keys: ["right", "space", "pgdn"] },
+  { label: "Previous page", keys: ["left", "pgup"] },
+  { label: "First / last page", keys: ["home", "end"] },
+  { label: "Go to page", keys: [], gesture: "Type the number, then Enter" },
+  { label: "Pages overview", keys: ["G"] },
+  { label: "Blur the screen", keys: ["B"] },
+  { label: "Full screen on / off", keys: ["F"] },
+  { label: "Show these keys", keys: ["?"] },
+  { label: "Stop presenting", keys: ["esc"] },
+];
 
 export const SHORTCUT_GROUPS: Array<{ title: string; rows: ShortcutRow[] }> = [
   {
@@ -109,9 +128,11 @@ export const SHORTCUT_GROUPS: Array<{ title: string; rows: ShortcutRow[] }> = [
       { label: "Move around", keys: [], gesture: "Space + drag" },
       { label: "Search assets", keys: ["/"] },
       { label: "Save", keys: ["mod+S"] },
+      { label: "Present full screen", keys: ["alt+mod+P"] },
       { label: "Show shortcuts", keys: ["?"] },
     ],
   },
+  { title: "While presenting", rows: PRESENT_SHORTCUTS },
 ];
 
 const isTypingTarget = (target: EventTarget | null) => {
@@ -124,19 +145,27 @@ export interface UseEditorShortcutsOptions {
   enabled: boolean;
   onInsert: (template: ElementTemplate, startEditing: boolean) => void;
   onOpenHelp: () => void;
+  /** Ctrl/⌘ + Alt + P starts presenting (also in view-only mode) */
+  onPresent?: () => void;
 }
 
 /** One-key inserts and "?" for the help sheet (ignored while typing) */
-export function useEditorShortcuts({ enabled, onInsert, onOpenHelp }: UseEditorShortcutsOptions): void {
-  const latest = useRef({ enabled, onInsert, onOpenHelp });
+export function useEditorShortcuts({ enabled, onInsert, onOpenHelp, onPresent }: UseEditorShortcutsOptions): void {
+  const latest = useRef({ enabled, onInsert, onOpenHelp, onPresent });
   useLayoutEffect(() => {
-    latest.current = { enabled, onInsert, onOpenHelp };
+    latest.current = { enabled, onInsert, onOpenHelp, onPresent };
   });
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTypingTarget(e.target)) return;
-      const { enabled: on, onInsert: insert, onOpenHelp: help } = latest.current;
+      const { enabled: on, onInsert: insert, onOpenHelp: help, onPresent: present } = latest.current;
+      // e.code: on a Mac, Alt+P types "π"
+      if (present && (e.metaKey || e.ctrlKey) && e.altKey && e.code === "KeyP") {
+        e.preventDefault();
+        present();
+        return;
+      }
       // "?" (Shift+/) or Cmd/Ctrl+/ opens the help sheet, also in view-only mode
       if ((e.key === "?" && !e.metaKey && !e.ctrlKey) || ((e.metaKey || e.ctrlKey) && e.key === "/")) {
         e.preventDefault();

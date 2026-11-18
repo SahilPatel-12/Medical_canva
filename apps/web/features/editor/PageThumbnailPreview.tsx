@@ -18,6 +18,8 @@ interface PageThumbnailPreviewProps {
   backgroundColor: string;
   /** Ignore the stored low-res thumbnail and draw the page as vectors (crisp at any size) */
   preferVector?: boolean;
+  /** Corner rounding in px (0 for full-screen slides) */
+  radius?: number;
 }
 
 export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
@@ -26,6 +28,7 @@ export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
   docHeight,
   backgroundColor,
   preferVector = false,
+  radius = 4,
 }) => {
   // If a high-res exported data URL is available, render that image
   if (page.thumbnail && !preferVector) {
@@ -37,7 +40,7 @@ export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
           width: "100%",
           height: "100%",
           objectFit: "contain",
-          borderRadius: "4px",
+          borderRadius: radius,
           display: "block",
         }}
       />
@@ -55,7 +58,7 @@ export const PageThumbnailPreview: React.FC<PageThumbnailPreviewProps> = ({
         width: "100%",
         height: "100%",
         display: "block",
-        borderRadius: "4px",
+        borderRadius: radius,
         overflow: "hidden",
       }}
     >

@@ -21,6 +21,7 @@ import {
   FileImage,
   FileCode,
   Sparkles,
+  Presentation,
 } from "lucide-react";
 import { Button, Dropdown, DropdownItem, Badge, ThemeToggle } from "@design-platform/ui";
 import { SaveStatus } from "@design-platform/editor";
@@ -50,6 +51,8 @@ export interface EditorTopBarProps {
   collaborators?: CollaboratorInfo[];
   connectionStatus?: "connected" | "connecting" | "reconnecting" | "disconnected";
   canManageShare?: boolean;
+  /** Starts presenting full screen from the current page */
+  onPresent?: () => void;
 }
 
 export const EditorTopBar: React.FC<EditorTopBarProps> = ({
@@ -75,6 +78,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   connectionStatus,
   canManageShare = true,
   onOpenShortcuts,
+  onPresent,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [titleValue, setTitleValue] = useState(name);
@@ -622,6 +626,19 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
               disabled={saveStatus === "saving"}
             >
               {saveStatus === "saved" ? "Saved" : "Save"}
+            </Button>
+          )}
+
+          {/* Present Button (full-screen slideshow, also for viewers) */}
+          {onPresent && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onPresent}
+              icon={<Presentation size={14} style={{ color: "#047857" }} />}
+              title="Present full screen"
+            >
+              Present
             </Button>
           )}
 

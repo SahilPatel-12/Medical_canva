@@ -14,6 +14,7 @@ import { EditorTopBar } from "../../../features/editor/EditorTopBar";
 import { EditorLeftPanel, LeftPanelTab } from "../../../features/editor/EditorLeftPanel";
 import { EditorBottomBar } from "../../../features/editor/EditorBottomBar";
 import { EditorGridViewModal } from "../../../features/editor/EditorGridViewModal";
+import { PresentationMode } from "../../../features/editor/PresentationMode";
 import { Button, Badge } from "@design-platform/ui";
 import {
   Loader2,
@@ -34,6 +35,7 @@ import {
   ArrowDown,
   Crosshair,
   SlidersHorizontal,
+  Presentation,
 } from "lucide-react";
 
 export interface ShareClientProps {
@@ -206,6 +208,8 @@ function SharedViewerStudio({
   const [zoom, setZoom] = useState<number>(1);
   const [activePageIndex, setActivePageIndex] = useState<number>(0);
   const [isGridViewOpen, setIsGridViewOpen] = useState<boolean>(false);
+  /** Page the presentation opened on; null while not presenting */
+  const [presentFrom, setPresentFrom] = useState<number | null>(null);
 
   const [doc, setDoc] = useState<DesignDocument>(details.design);
   const pages = doc.pages || [{ id: "page-1", name: "Page 1", elements: [] }];
@@ -514,6 +518,18 @@ function SharedViewerStudio({
           <span style={{ fontSize: "12px", color: "var(--muted-foreground, #71717a)" }}>
             Anyone with the link • Read-only
           </span>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setIsGridViewOpen(false);
+              setPresentFrom(activePageIndex);
+            }}
+            icon={<Presentation size={14} />}
+            title="Present full screen"
+          >
+            Present
+          </Button>
         </div>
       </header>
 
@@ -566,6 +582,17 @@ function SharedViewerStudio({
         onDeletePage={() => {}}
         isReadOnly={true}
       />
+
+      {presentFrom !== null && (
+        <PresentationMode
+          document={doc}
+          startIndex={presentFrom}
+          onExit={(pageIndex) => {
+            setPresentFrom(null);
+            if (pageIndex !== activePageIndex) handleSelectPage(pageIndex);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -640,6 +667,8 @@ function SharedEditorStudio({
 
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>("assets");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  /** Page the presentation opened on; null while not presenting */
+  const [presentFrom, setPresentFrom] = useState<number | null>(null);
 
   const handleExportPng = () => {
     const dataUrl = exportImage(2.0);
@@ -755,6 +784,10 @@ function SharedEditorStudio({
         collaborators={collaborators}
         connectionStatus={connectionStatus}
         canManageShare={false} // Shared collaborators cannot alter link share settings
+        onPresent={() => {
+          setIsGridViewOpen(false);
+          setPresentFrom(activePageIndex);
+        }}
       />
 
       {/* Main Studio Body: Contextual Left Panel + Maximized Center Canvas */}
@@ -1027,6 +1060,17 @@ function SharedEditorStudio({
         onReorderPages={reorderPages}
         isReadOnly={isReadOnly}
       />
+
+      {presentFrom !== null && (
+        <PresentationMode
+          document={state.document}
+          startIndex={presentFrom}
+          onExit={(pageIndex) => {
+            setPresentFrom(null);
+            if (pageIndex !== activePageIndex) setActivePage(pageIndex);
+          }}
+        />
+      )}
     </div>
   );
 }
