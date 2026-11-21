@@ -2416,3 +2416,18 @@ body {
   font-size: 11.5px;
   font-weight: 500;
 }
+
+/* Spinning loader icons (save status, export progress) */
+@keyframes dp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin {
+  animation: dp-spin 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation-duration: 2.5s;
+  }
+}

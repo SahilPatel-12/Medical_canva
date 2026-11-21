@@ -20,6 +20,7 @@ import {
   Keyboard,
   FileImage,
   FileCode,
+  FileText,
   Sparkles,
   Presentation,
 } from "lucide-react";
@@ -48,6 +49,10 @@ export interface EditorTopBarProps {
   onOpenShortcuts?: () => void;
   onExportPng?: () => void;
   onExportJson?: () => void;
+  /** Downloads every page as a PDF */
+  onExportPdf?: () => void;
+  /** Set while a PDF is being prepared */
+  pdfProgress?: { done: number; total: number } | null;
   collaborators?: CollaboratorInfo[];
   connectionStatus?: "connected" | "connecting" | "reconnecting" | "disconnected";
   canManageShare?: boolean;
@@ -74,6 +79,8 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   onShareClick,
   onExportPng,
   onExportJson,
+  onExportPdf,
+  pdfProgress = null,
   collaborators = [],
   connectionStatus,
   canManageShare = true,
@@ -150,6 +157,19 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   ];
 
   const exportMenuItems: DropdownItem[] = [
+    ...(onExportPdf
+      ? [
+          {
+            id: "export-pdf",
+            label: pdfProgress
+              ? `Preparing PDF… (${pdfProgress.done}/${pdfProgress.total})`
+              : "Download PDF (All Pages)",
+            icon: <FileText size={15} style={{ color: "#dc2626" }} />,
+            disabled: Boolean(pdfProgress),
+            onClick: onExportPdf,
+          },
+        ]
+      : []),
     ...(onExportPng
       ? [
           {
@@ -602,8 +622,18 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
             <Dropdown
               align="right"
               trigger={
-                <Button variant="secondary" size="sm" icon={<Download size={14} />}>
-                  Export
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={
+                    pdfProgress ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Download size={14} />
+                    )
+                  }
+                >
+                  {pdfProgress ? "Exporting…" : "Export"}
                 </Button>
               }
               items={exportMenuItems}

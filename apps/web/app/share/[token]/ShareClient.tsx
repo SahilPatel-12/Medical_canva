@@ -15,6 +15,7 @@ import { EditorLeftPanel, LeftPanelTab } from "../../../features/editor/EditorLe
 import { EditorBottomBar } from "../../../features/editor/EditorBottomBar";
 import { EditorGridViewModal } from "../../../features/editor/EditorGridViewModal";
 import { PresentationMode } from "../../../features/editor/PresentationMode";
+import { usePdfExport } from "../../../features/editor/usePdfExport";
 import { Button, Badge } from "@design-platform/ui";
 import {
   Loader2,
@@ -665,6 +666,9 @@ function SharedEditorStudio({
     resetZoom,
   } = useEditor({ initialDocument: details.design, repository });
 
+  // The PDF captures the document as it is when the user clicks
+  const { exportPdf, pdfProgress } = usePdfExport(useCallback(() => state.document, [state.document]));
+
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>("assets");
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   /** Page the presentation opened on; null while not presenting */
@@ -780,6 +784,8 @@ function SharedEditorStudio({
         onSave={save}
         onExportPng={handleExportPng}
         onExportJson={handleExportJson}
+        onExportPdf={exportPdf}
+        pdfProgress={pdfProgress}
         isReadOnly={isReadOnly}
         collaborators={collaborators}
         connectionStatus={connectionStatus}

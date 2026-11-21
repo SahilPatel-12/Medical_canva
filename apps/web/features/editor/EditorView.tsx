@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DesignDocument } from "@design-platform/types";
@@ -17,6 +17,7 @@ import { MultiSelectionActions, MultiSelectionToolbar } from "./inspector/MultiS
 import { EditorContextMenu, buildCanvasMenu } from "./EditorContextMenu";
 import { KeyboardShortcutsDialog, useEditorShortcuts } from "./KeyboardShortcuts";
 import { PresentationMode } from "./PresentationMode";
+import { usePdfExport } from "./usePdfExport";
 import { TextStyleContext } from "./text/TextStyle";
 import type { ElementTemplate } from "./panels/elementTemplates";
 import { Button } from "@design-platform/ui";
@@ -266,6 +267,9 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
     updateTextBox,
     setTextContent,
   } = useEditor({ initialDocument, repository, isReadOnly });
+
+  // The PDF captures the document as it is when the user clicks
+  const { exportPdf, pdfProgress } = usePdfExport(useCallback(() => state.document, [state.document]));
   const textStyleApi = useMemo(
     () => ({ textEdit, applyTextStyle, updateTextBox, setTextContent }),
     // The functions are rebuilt every render; only the selection matters for consumers
@@ -478,6 +482,8 @@ const EditorStudio: React.FC<EditorStudioProps> = ({
         onSave={save}
         onExportPng={handleExportPng}
         onExportJson={handleExportJson}
+        onExportPdf={exportPdf}
+        pdfProgress={pdfProgress}
         isReadOnly={effectiveReadOnly}
         onShareClick={() => setIsShareOpen(true)}
         collaborators={collaborators}

@@ -1862,7 +1862,58 @@ export class CanvasEngine {
    * Export the canvas page as a PNG Data URL for thumbnails / preview
    */
   public exportThumbnail(pixelRatio: number = 0.4): string {
-    if (!this.stage || !this.pageGroup || !this.currentDoc) return "";
+    const doc = this.currentDoc;
+    const pageGroup = this.pageGroup;
+    if (!doc || !pageGroup) return "";
+    try {
+      return (
+        this.withCleanExportView(() =>
+          pageGroup.toDataURL({
+            pixelRatio,
+            x: 0,
+            y: 0,
+            width: doc.width,
+            height: doc.height,
+            mimeType: "image/png",
+          })
+        ) ?? ""
+      );
+    } catch (err) {
+      console.warn(
+        "[CanvasEngine] exportThumbnail skipped (e.g. tainted canvas or headless context):",
+        (err as Error)?.message || err
+      );
+      return "";
+    }
+  }
+
+  /**
+   * Draws the active page (exactly as it will be shared: no selection, hover or group-edit
+   * dimming) onto a new canvas of `width * pixelRatio` x `height * pixelRatio` pixels.
+   * Returns null when nothing is rendered yet.
+   */
+  public exportPageCanvas(pixelRatio: number = 2): HTMLCanvasElement | null {
+    const doc = this.currentDoc;
+    const pageGroup = this.pageGroup;
+    if (!doc || !pageGroup) return null;
+    return this.withCleanExportView(
+      () =>
+        pageGroup.toCanvas({
+          pixelRatio,
+          x: 0,
+          y: 0,
+          width: doc.width,
+          height: doc.height,
+        }) as HTMLCanvasElement
+    );
+  }
+
+  /**
+   * Runs `draw` with the page shown as the finished design at 1:1 at the origin (toDataURL /
+   * toCanvas work in screen space), then restores the user's view and editing chrome.
+   */
+  private withCleanExportView<T>(draw: () => T): T | null {
+    if (!this.stage || !this.pageGroup || !this.currentDoc) return null;
 
     const wasVisible = this.transformer?.visible();
     if (this.transformer) this.transformer.visible(false);
@@ -1883,21 +1934,7 @@ export class CanvasEngine {
     this.stage.scale({ x: 1, y: 1 });
 
     try {
-      const dataUrl = this.pageGroup.toDataURL({
-        pixelRatio,
-        x: 0,
-        y: 0,
-        width: this.currentDoc.width,
-        height: this.currentDoc.height,
-        mimeType: "image/png",
-      });
-      return dataUrl;
-    } catch (err) {
-      console.warn(
-        "[CanvasEngine] exportThumbnail skipped (e.g. tainted canvas or headless context):",
-        (err as Error)?.message || err
-      );
-      return "";
+      return draw();
     } finally {
       this.stage.position(stagePos);
       this.stage.scale(stageScale);

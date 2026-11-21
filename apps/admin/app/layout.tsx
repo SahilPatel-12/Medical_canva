@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@design-platform/ui";
+import { AdminShell } from "./_components/AdminShell";
 import "./globals.css";
+import "./admin.css";
 
 export const metadata: Metadata = {
-  title: "Admin Panel - Design Platform",
+  title: "Admin Console - Medical Canva",
   description: "Internal administration interface",
 };
 
@@ -35,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider defaultTheme="dark">
-          {children}
+          <AdminShell>{children}</AdminShell>
         </ThemeProvider>
       </body>
     </html>

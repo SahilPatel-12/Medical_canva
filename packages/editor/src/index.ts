@@ -19,6 +19,10 @@ export * from "./elements/sampleAssets";
 export * from "./elements/taxonomy";
 export * from "./elements/shapeGeometry";
 
+// Export (PDF)
+export * from "./export/pdfWriter";
+export * from "./export/exportPdf";
+
 // State, Store & Hook
 export * from "./state/EditorStore";
 export * from "./state/useEditor";

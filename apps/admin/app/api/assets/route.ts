@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
       subcategorySlug,
       search,
       status,
+      // The library shows the stored file; leaving out the SVG markup keeps the list ~1.7 MB, not ~28 MB
+      withSvgContent: false,
     });
     const categories = await repo.getCategories();
 
